@@ -9,6 +9,6 @@ We cover 3 user scenarios:
 
 1. Slot Booking — a driver books and pays a deposit for a charging slot
 2. No-Show Handling — a grace period, deposit forfeiture, tiered penalties, and automatic waitlist promotion
-3. Overstay Penalty — dynamic billing, and refunds for affected next users
+3. Report Faulty Charger - in the event of a spoiled charger, users are able to file a report manually and the system will inform all the stakeholders involved automatically
    
 Across all scenarios, our solution showcases HTTP and AMQP communication, Docker Compose deployment, service reuse (Payment service reused 4 times), orchestration, and Beyond-the-Labs features including delayed AMQP messaging and the Telegram Bot API.
