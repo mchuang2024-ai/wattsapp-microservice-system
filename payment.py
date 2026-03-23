@@ -9,21 +9,19 @@ app = Flask(__name__)
 
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    environ.get('dbURL')
-)
+app.config['SQLALCHEMY_DATABASE_URI'] = ('mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment')
 
 db = SQLAlchemy(app)
 
 class Payment(db.Model):
-    __tablename__ = 'payment'
+    __tablename__ = 'Payment'
     
-    paymentID = db.Column(db.integer, primary_key = True, nullable = False)
-    driverID = db.Column(db.integer, nullable = False) #foreign key
-    bookingID = db.Column(db.integer, nullable = False) #foreign key
-    amount = db.Column(db.float, nullable = False) 
-    type = db.Column(db.string(10), nullable = False, default = 'hold') 
-    status = db.Column(db.string(10), nullable = False, default = 'pending')
+    paymentID = db.Column(db.Integer, primary_key = True, nullable = False)
+    driverID = db.Column(db.Integer, nullable = True) #foreign key
+    bookingID = db.Column(db.Integer, nullable = False) #foreign key
+    amount = db.Column(db.Float, nullable = False, default = 0.0) 
+    type = db.Column(db.String(10), nullable = False) 
+    status = db.Column(db.String(10), nullable = False, default = 'pending')
     createdAt = db.Column(db.DateTime, nullable = False, default = datetime.now)
     
     def json(self):
@@ -38,54 +36,97 @@ class Payment(db.Model):
         }
         return dto
     
-# Make Payment
+# Make Payment (Create a new payment record)
 @app.route("/payment/hold", methods=['POST'])
 def makePayment():
-    pass
+    driverID = request.json.get('driverID', None)
+    bookingID = request.json.get('bookingID', None)
+    amount = request.json.get('amount', None)
 
-#Extra Payment if Late
+    payment = Payment(driverID=driverID, bookingID=bookingID, amount=amount, type='hold')
+
+    try:
+        db.session.add(payment)
+        db.session.commit()
+
+    except Exception as e:
+        print("Error: {}".format(str(e)))
+        return jsonify(
+            {
+                "code": 500,
+                "message": "An error occurred while recording the payment. " + str(e)
+            }
+        ), 500
+
+    return jsonify(
+        {
+            "code": 201,
+            "data": payment.json()
+        }
+    ), 201
+
+#Extra Payment if Late (Create a new payment record)
 @app.route("/payment/late-fee", methods=['POST'])
 def extraPayment():
-    pass
+    bookingID = request.json.get('bookingID', None)
+    minsLate = request.json.get('minsLate', None)
+
+    # Calculate the late fee based on the number of minutes late
+    late_fee = minsLate * 0.1  # Example calculation, adjust as needed
+
+    payment = Payment(bookingID=bookingID, amount=late_fee, type='late-fee')
+
+    try:
+        db.session.add(payment)
+        db.session.commit()
+        
+    except Exception as e:
+        print("Error: {}".format(str(e)))
+        return jsonify(
+            {
+                "code": 500,
+                "message": "An error occurred while recording the late fee payment. " + str(e)
+            }
+        ), 500
+
+    return jsonify(
+        {
+            "code": 201,
+            "data": payment.json()
+        }
+    ), 201
 
 #Penalty (Deposit Paid)
 @app.route("/payment/forfeit-deposit", methods=['POST'])
-def penalty():
-    pass
+def penaltyPayment():
+    bookingID = request.json.get('bookingID', None)
+    
+    payment = Payment(bookingID=bookingID, type='forfeit', status='pending')
+
+    try:
+        db.session.add(payment)
+        db.session.commit()
+        
+    except Exception as e:
+        print("Error: {}".format(str(e)))
+        return jsonify(
+            {
+                "code": 500,
+                "message": "An error occurred while recording the forfeit deposit payment. " + str(e)
+            }
+        ), 500
+
+    return jsonify(
+        {
+            "code": 201,
+            "data": payment.json()
+        }
+    ), 201
     
     
 if __name__ == '__main__':
-    print("This is flask for " + os.path.basename(__file__) + ": manage payments ...")
     app.run()
 
-# @app.route("/order", methods=['POST'])
-# def create_order():
-#     customer_id = request.json.get('customer_id', None)
-#     order = Order(customer_id=customer_id, status='NEW')
-
-#     cart_item = request.json.get('cart_item')
-#     for item in cart_item:
-#         order.order_item.append(Order_Item(
-#             book_id=item['book_id'], quantity=item['quantity']))
-
-#     try:
-#         db.session.add(order)
-#         db.session.commit()
-#     except Exception as e:
-#         print("Error: {}".format(str(e)))
-#         return jsonify(
-#             {
-#                 "code": 500,
-#                 "message": "An error occurred while creating the order. " + str(e)
-#             }
-#         ), 500
-
-#     return jsonify(
-#         {
-#             "code": 201,
-#             "data": order.json()
-#         }
-#     ), 201
 
 
 
