@@ -5,9 +5,7 @@ import os
 
 app = Flask(__name__)
 
-# ==============================
 # DATABASE CONFIG (Railway)
-# ==============================
 app.config['SQLALCHEMY_DATABASE_URI'] = (
     os.environ.get('DATABASE_URL',
     'mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/maintenance')
@@ -19,9 +17,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 db = SQLAlchemy(app)
 CORS(app)
 
-# ==============================
 # MODEL
-# ==============================
 class MaintenanceTicket(db.Model):
     __tablename__ = 'MaintenanceTicket'
 
@@ -41,11 +37,7 @@ class MaintenanceTicket(db.Model):
             "chargerType": self.chargerType,
             "status": self.status
         }
-
-# ==============================
 # ROUTES
-# ==============================
-
 # CREATE TICKET
 @app.route("/maintenance/ticket", methods=['POST'])
 def create_ticket():
@@ -78,8 +70,7 @@ def create_ticket():
         "data": ticket.json()
     }), 201
 
-
-# GET ALL TICKETS (MOVED HERE - BEFORE THE if __name__ block)
+# GET ALL TICKETS
 @app.route("/maintenance/tickets", methods=['GET'])
 def get_all_tickets():
     tickets = MaintenanceTicket.query.all()
@@ -137,9 +128,9 @@ def update_status(id):
     })
 
 
-# ==============================
+
+
 # RUN APP
-# ==============================
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
