@@ -111,5 +111,12 @@ notification_data = {
 response = requests.post("http://localhost:5005/notification/send", json=notification_data)
 ```
 
-## Later: Adding AMQP (RabbitMQ)
-When the team integrates RabbitMQ, a separate `notification_amqp.py` consumer will be added that subscribes to `late.*`, `slot.*`, `booking.*`, `charger.*`, and `waitlist.*` events. It will call the same `send_telegram_message()` function and log to the same database. The HTTP endpoints will remain available for direct calls.
+## AMQP Integration (RabbitMQ)
+The system now includes RabbitMQ for asynchronous messaging. A consumer `rabbitmq/notification_amqp.py` subscribes to events on the `wattsapp_topic` exchange and sends notifications via this service.
+
+### Running the AMQP Consumer
+1. Start RabbitMQ: `cd rabbitmq && docker-compose up -d`
+2. Set up queues: `python amqp_setup.py`
+3. Run consumer: `python notification_amqp.py`
+
+The consumer listens for `late.*`, `slot.*`, `booking.*`, `charger.*`, and `waitlist.*` events and calls the `/notification/send` endpoint. The HTTP endpoints remain available for direct calls.

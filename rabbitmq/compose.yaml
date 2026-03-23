@@ -1,0 +1,30 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: wattsapp-rabbit
+    ports:
+      - "5672:5672"    # AMQP port
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password123
+    volumes:
+      - wattsapp_rabbitmq_data:/var/lib/rabbitmq
+
+  notification-service:
+    build: ../notification
+    ports:
+      - "5005:5005"
+    depends_on:
+      - rabbitmq
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: pulsepark
+    ports:
+      - "3306:3306"
+
+volumes:
+  wattsapp_rabbitmq_data:
