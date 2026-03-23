@@ -9,7 +9,9 @@ app = Flask(__name__)
 
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = ('mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment')
+app.config['SQLALCHEMY_DATABASE_URI'] = (environ.get('dbURL') or 'mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 
 db = SQLAlchemy(app)
 
@@ -17,8 +19,8 @@ class Payment(db.Model):
     __tablename__ = 'Payment'
     
     paymentID = db.Column(db.Integer, primary_key = True, nullable = False)
-    driverID = db.Column(db.Integer, nullable = True) #foreign key
-    bookingID = db.Column(db.Integer, nullable = False) #foreign key
+    driverID = db.Column(db.Integer, nullable = False)
+    bookingID = db.Column(db.Integer, nullable = False) 
     amount = db.Column(db.Float, nullable = False, default = 0.0) 
     type = db.Column(db.String(10), nullable = False) 
     status = db.Column(db.String(10), nullable = False, default = 'pending')
@@ -69,12 +71,13 @@ def makePayment():
 @app.route("/payment/late-fee", methods=['POST'])
 def extraPayment():
     bookingID = request.json.get('bookingID', None)
+    driverID = request.json.get('driverID', None)
     minsLate = request.json.get('minsLate', None)
 
     # Calculate the late fee based on the number of minutes late
     late_fee = minsLate * 0.1  # Example calculation, adjust as needed
 
-    payment = Payment(bookingID=bookingID, amount=late_fee, type='late-fee')
+    payment = Payment(bookingID=bookingID, driverID=driverID, amount=late_fee, type='late-fee')
 
     try:
         db.session.add(payment)
@@ -100,8 +103,9 @@ def extraPayment():
 @app.route("/payment/forfeit-deposit", methods=['POST'])
 def penaltyPayment():
     bookingID = request.json.get('bookingID', None)
+    driverID = request.json.get('driverID', None)
     
-    payment = Payment(bookingID=bookingID, type='forfeit', status='pending')
+    payment = Payment(bookingID=bookingID, driverID=driverID, type='forfeit', status='pending')
 
     try:
         db.session.add(payment)
@@ -125,7 +129,7 @@ def penaltyPayment():
     
     
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=5001, debug=True)
 
 
 
