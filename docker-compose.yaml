@@ -1,0 +1,7 @@
+services:
+  maintenance:
+    build:
+      context: ./maintenance
+    container_name: maintenance
+    ports:
+      - "5006:5006"
