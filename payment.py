@@ -41,33 +41,22 @@ class Payment(db.Model):
 # Make Payment
 @app.route("/payment/hold", methods=['POST'])
 def makePayment():
-    result = 1 + 1
-    return result
+    pass
+
+#Extra Payment if Late
+@app.route("/payment/late-fee", methods=['POST'])
+def extraPayment():
+    pass
+
+#Penalty (Deposit Paid)
+@app.route("/payment/forfeit-deposit", methods=['POST'])
+def penalty():
+    pass
+    
     
 if __name__ == '__main__':
     print("This is flask for " + os.path.basename(__file__) + ": manage payments ...")
-    app.run(host='0.0.0.0', port=5001, debug=True)
-
-# @app.route("/order/<string:order_id>")
-# def find_by_order_id(order_id):
-#     order = db.session.scalar(db.select(Order).filter_by(order_id=order_id))
-#     if order:
-#         return jsonify(
-#             {
-#                 "code": 200,
-#                 "data": order.json()
-#             }
-#         )
-#     return jsonify(
-#         {
-#             "code": 404,
-#             "data": {
-#                 "order_id": order_id
-#             },
-#             "message": "Order not found."
-#         }
-#     ), 404
-
+    app.run()
 
 # @app.route("/order", methods=['POST'])
 # def create_order():
@@ -99,42 +88,6 @@ if __name__ == '__main__':
 #     ), 201
 
 
-# @app.route("/order/<string:order_id>", methods=['PUT'])
-# def update_order(order_id):
-#     try:
-#         order = db.session.scalar(db.select(Order).filter_by(order_id=order_id))
-#         if not order:
-#             return jsonify(
-#                 {
-#                     "code": 404,
-#                     "data": {
-#                         "order_id": order_id
-#                     },
-#                     "message": "Order not found."
-#                 }
-#             ), 404
 
-#         # update status
-#         data = request.get_json()
-#         if data['status']:
-#             order.status = data['status']
-#             db.session.commit()
-#             return jsonify(
-#                 {
-#                     "code": 200,
-#                     "data": order.json()
-#                 }
-#             ), 200
-#     except Exception as e:
-#         print("Error: {}".format(str(e)))
-#         return jsonify(
-#             {
-#                 "code": 500,
-#                 "data": {
-#                     "order_id": order_id
-#                 },
-#                 "message": "An error occurred while updating the order. " + str(e)
-#             }
-#         ), 500
 
 
