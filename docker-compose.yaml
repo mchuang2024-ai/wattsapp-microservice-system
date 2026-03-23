@@ -5,3 +5,13 @@ services:
     container_name: maintenance
     ports:
       - "5006:5006"
+  payment:
+    build:
+      context: ./payment
+      dockerfile: dockerfile
+    image: #to be filled
+    container_name: payment
+    ports:
+      - "5001:5001"
+    environment:
+      - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment
