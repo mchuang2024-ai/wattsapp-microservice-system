@@ -1,17 +1,72 @@
+version: "3.8"
+
 services:
-  maintenance:
-    build:
-      context: ./maintenance
-    container_name: maintenance
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
     ports:
-      - "5006:5006"
-  payment:
+      - "5672:5672"    # AMQP protocol
+      - "15672:15672"  # Management UI (user: guest, pass: guest)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  driver:
     build:
-      context: ./payment
-      dockerfile: dockerfile
-    image: #to be filled
-    container_name: payment
+      context: ./driver
+      dockerfile: Dockerfile
+    image: charger/driver
+    container_name: driver
     ports:
       - "5001:5001"
     environment:
+      - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/driver
+
+  booking:
+    build:
+      context: ./booking
+      dockerfile: Dockerfile
+    image: charger/booking
+    container_name: booking
+    ports:
+      - "5003:5003"
+    environment:
+      - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/booking
+
+  payment:
+    build:
+      context: ./payment
+      dockerfile: Dockerfile
+    image: charger/payment
+    container_name: payment
+    ports:
+      - "5004:5004"
+    environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment
+
+  notification:
+    build:
+      context: ./notification
+      dockerfile: Dockerfile
+    image: charger/notification
+    container_name: notification
+    ports:
+      - "5005:5005"
+    environment:
+      - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/notification
+
+  maintenance:
+    build:
+      context: ./maintenance
+      dockerfile: Dockerfile
+    image: charger/maintenance
+    container_name: maintenance
+    ports:
+      - "5006:5006"
+    environment:
+      - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/maintenance
