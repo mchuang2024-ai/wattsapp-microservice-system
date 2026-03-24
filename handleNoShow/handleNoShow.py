@@ -75,15 +75,15 @@ def handleNoShow():
 
                 if updateBookingStatus_http_status not in range(200, 300):
                     # Return error
-                    return {
+                    return jsonify({
                         "code": 500,
                         "data": {"updateBookingStatusResult": updateBookingStatusResult },
                         "message": "Failure in updating booking status to late check in",
-                    }, 500
+                    }), 500
 
                 # 4a. Handle No-Show invokes Payment Service via HTTP POST /payment/late-fee {bookingID, minsLate} to charge a proportional per-minute late fee against the driver's deposit.
                 lateFeePaymentURL = paymentURL + "/late-fee"
-                jsonData = jsonify({
+                jsonData = json.dumps({
                     "bookingID" : bookingID,
                     "minsLate" : 19
                 })
@@ -91,11 +91,11 @@ def handleNoShow():
 
                 if lateFeePayment_http_status not in range(200, 300):
                     # Return error
-                    return {
+                    return jsonify({
                         "code": 500,
                         "data": {"lateFeePaymentResult": lateFeePaymentResult},
                         "message": "Failure to record late fee payment",
-                    }, 500
+                    }), 500
 
                 # 5a. Handle No-Show invokes Driver Service via HTTP PUT /driver/{driverID}/late-count to increment the driver's late arrival count.
                 lateCountDriverURL = driverURL + "/" + driverID + "/late-count"
@@ -103,14 +103,14 @@ def handleNoShow():
 
                 if lateCountDriver_http_status not in range(200, 300):
                     # Return error
-                    return {
+                    return jsonify({
                         "code": 500,
                         "data": {"lateCountDriverResult": lateCountDriverResult},
                         "message": "Failure to increment the driver's late arrival count",
-                    }, 500
+                    }), 500
 
                 # 6a. Handle No-Show publishes a late-charged event (bookingID, minsLate, feeAmount) to RabbitMQ Topic Exchange via AMQP.
-                message = jsonify({
+                message = json.dumps({
                     "bookingID": bookingID,
                     "minsLate" : 19,
                     "feeAmount": 20
@@ -124,11 +124,11 @@ def handleNoShow():
 
                 if updateBookingStatus_http_status not in range(200, 300):
                     # Return error
-                    return {
+                    return jsonify({
                         "code": 500,
                         "data": {"updateBookingStatusResult": updateBookingStatusResult},
                         "message": "Failure to update the booking status to no_show",
-                    }, 500
+                    }), 500
 
                 # 4b. Handle No-Show invokes Driver Service to increase their late count (same as #5a)
                 lateCountDriverURL = driverURL + "/" + driverID + "/late-count"
@@ -136,35 +136,34 @@ def handleNoShow():
 
                 if lateCountDriver_http_status not in range(200, 300):
                     # Return error
-                    return {
+                    return jsonify({
                         "code": 500,
                         "data": {"lateCountDriverResult": lateCountDriverResult},
                         "message": "Failure to increment the driver's late arrival count",
-                    }, 500
+                    }), 500
 
                 # 5b. Handle No-Show invokes Payment Service to forfeit deposit
                 forfeitDepositURL = paymentURL + "/forfeit-deposit"
-                jsonData = jsonify({
+                jsonData = json.dumps({
                     "bookingID" : bookingID,
                 })
                 forfeitDepositResult, forfeitDeposit_http_status = invoke_http(forfeitDepositURL, method="POST", json=jsonData)
 
                 if forfeitDeposit_http_status not in range(200, 300):
                     # Return error
-                    return {
+                    return jsonify({
                         "code": 500,
                         "data": {"forfeitDepositResult": forfeitDepositResult},
                         "message": "Failure to forfeit deposit payment",
-                    }, 500
+                    }), 500
 
                 # 6b. Handle No-Show publishes a slot.released event (bookingID, slotID, stationID) to RabbitMQ Topic Exchange via AMQP.
-                message = jsonify({
+                message = json.dumps({
                     "bookingID": bookingID,
                     "slotID" : 19,
                     "stationID": 20
                 })
                 channel.basic_publish(exchange=exchange_name, routing_key="slot.released", body=message)
-
 
         except Exception as e:
             # Unexpected error in code
@@ -180,7 +179,8 @@ def handleNoShow():
                         "exception": ex_str,
                     }
             ), 500
-
+        
+    #invalid json exception
     else:
         return jsonify(
             {
@@ -188,6 +188,14 @@ def handleNoShow():
                 "message": "Invalid JSON input: " + str(request.get_data())
             }
         ), 400
+    
+    #final confirmation
+    return jsonify(
+        {
+            "code" : 201,
+            "message" : "successfully handled no-show."
+        }
+    ),201
 
 # Execute this program if it is run as a main script (not by 'import')
 if __name__ == "__main__":
