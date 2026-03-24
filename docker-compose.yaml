@@ -91,5 +91,22 @@ services:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/maintenance
     networks:
       - esd-network
+  report-fault:
+    build:
+      context: ./report_fault
+    container_name: report-fault
+    ports:
+      - "5010:5010"
+    networks:
+      - esd-network
+  status:
+    build:
+      context: .
+      dockerfile: status/Dockerfile
+    container_name: status
+    ports:
+      - "5006:5003"
+    networks:
+      - esd-network
 volumes:
   wattsapp_rabbitmq_data:
