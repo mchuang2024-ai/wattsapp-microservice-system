@@ -228,6 +228,6 @@ if __name__ == '__main__':
             db.session.commit()
             print(f"Added {len(sample_slots)} sample slots")
     
-    port = int(os.environ.get('PORT', 5004))
+    port = int(os.environ.get('PORT', 5007))
     print(f"Status Service running on port {port}")
     app.run(host='0.0.0.0', port=port, debug=True)

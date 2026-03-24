@@ -7,8 +7,8 @@ app = Flask(__name__)
 MAINTENANCE_URL = "http://localhost:5005"
 BOOKING_URL = "http://localhost:5002"
 PAYMENT_URL = "http://localhost:5003"
-NOTIFICATION_URL = "http://localhost:5005"
-STATUS_URL = "http://localhost:5004"
+NOTIFICATION_URL = "http://localhost:5004"
+STATUS_URL = "http://localhost:5007"
 
 
 @app.route("/reportfault", methods=['POST'])
