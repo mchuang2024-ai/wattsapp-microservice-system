@@ -1,8 +1,12 @@
-FROM python:3-slim
-WORKDIR /usr/src/app
-COPY requirements.txt ./
-RUN python -m pip install --no-cache-dir -r requirements.txt
-COPY payment.py ./
-CMD [ "python", "./payment.py" ]
 
+FROM python:3.10-slim
 
+WORKDIR /app
+# relative to docker build file
+COPY payment/payment.py . 
+
+COPY http.reqs.txt .
+
+RUN pip install --no-cache-dir -r http.reqs.txt
+
+CMD ["python", "payment.py"]

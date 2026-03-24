@@ -1,8 +1,12 @@
-FROM python:3.10
+
+FROM python:3.10-slim
 
 WORKDIR /app
-COPY . .
+# relative to docker build file
+COPY maintenance/maintenance.py . 
 
-RUN pip install -r requirements.txt
+COPY http.reqs.txt .
+
+RUN pip install --no-cache-dir -r http.reqs.txt
 
 CMD ["python", "maintenance.py"]
