@@ -15,7 +15,7 @@ exchange_name = "wattsapp_topic"
 # Test message
 test_message = {
     "driverID": 1,
-    "chat_id": "123456789",
+    "chat_id": "1146728523",
     "message": "Test notification from RabbitMQ!",
     "type": "test"
 }

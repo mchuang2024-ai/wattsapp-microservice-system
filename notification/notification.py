@@ -17,11 +17,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 
 # Telegram Bot Configuration
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8766528831:AAFmXWP5UhrEXaOkvB9VP1ILtnN_oYeUUZc')
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '8761333590:AAGGqcM1cETwjMQRpoVpr5OIEEOJ2vMtraQ')
 TELEGRAM_API_URL = f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}'
 
 db = SQLAlchemy(app)
 CORS(app)
+
+# Create database tables if they don't exist
+db_available = True
+try:
+    with app.app_context():
+        db.create_all()
+        print("Database tables created successfully.")
+except Exception as e:
+    print(f"Warning: Could not create database tables: {str(e)}")
+    print("The service will continue without database functionality.")
+    db_available = False
 
 
 class Notification(db.Model):
@@ -88,6 +99,14 @@ def send_telegram_message(chat_id, message):
 # ==========================================
 @app.route("/notification")
 def get_all():
+    if not db_available:
+        return jsonify(
+            {
+                "code": 503,
+                "message": "Database not available. Notifications cannot be retrieved."
+            }
+        ), 503
+
     notification_list = db.session.scalars(db.select(Notification)).all()
 
     if len(notification_list):
@@ -112,6 +131,14 @@ def get_all():
 # =====================================================
 @app.route("/notification/<int:notificationID>")
 def find_by_id(notificationID):
+    if not db_available:
+        return jsonify(
+            {
+                "code": 503,
+                "message": "Database not available. Notification cannot be retrieved."
+            }
+        ), 503
+
     notification = db.session.scalar(
         db.select(Notification).filter_by(notificationID=notificationID)
     )
@@ -136,6 +163,14 @@ def find_by_id(notificationID):
 # =====================================================
 @app.route("/notification/driver/<int:driverID>")
 def find_by_driver(driverID):
+    if not db_available:
+        return jsonify(
+            {
+                "code": 503,
+                "message": "Database not available. Notifications cannot be retrieved."
+            }
+        ), 503
+
     notifications = db.session.scalars(
         db.select(Notification).filter_by(driverID=driverID)
     ).all()
@@ -196,29 +231,31 @@ def send_notification():
         if not success:
             telegram_status = 'failed'
 
-    # Log to database
-    notification = Notification(
-        driverID=driver_id,
-        message=message,
-        type=notif_type,
-        status=telegram_status
-    )
+    # Log to database if available
+    notification = None
+    if db_available:
+        notification = Notification(
+            driverID=driver_id,
+            message=message,
+            type=notif_type,
+            status=telegram_status
+        )
 
-    try:
-        db.session.add(notification)
-        db.session.commit()
-    except Exception as e:
-        return jsonify(
-            {
-                "code": 500,
-                "message": f"An error occurred saving the notification: {str(e)}"
-            }
-        ), 500
+        try:
+            db.session.add(notification)
+            db.session.commit()
+        except Exception as e:
+            return jsonify(
+                {
+                    "code": 500,
+                    "message": f"An error occurred saving the notification: {str(e)}"
+                }
+            ), 500
 
     return jsonify(
         {
             "code": 201,
-            "data": notification.json(),
+            "data": notification.json() if notification else {"message": message, "type": notif_type, "status": telegram_status},
             "telegram_sent": telegram_status == 'sent'
         }
     ), 201
@@ -268,24 +305,35 @@ def broadcast_notification():
             if not success:
                 telegram_status = 'failed'
 
-        # Log to database
-        notification = Notification(
-            driverID=driver_id,
-            message=message,
-            type=notif_type,
-            status=telegram_status
-        )
+        # Log to database if available
+        notification = None
+        if db_available:
+            notification = Notification(
+                driverID=driver_id,
+                message=message,
+                type=notif_type,
+                status=telegram_status
+            )
 
-        try:
-            db.session.add(notification)
-            db.session.commit()
-            results.append(notification.json())
-        except Exception as e:
-            db.session.rollback()
+            try:
+                db.session.add(notification)
+                db.session.commit()
+                results.append(notification.json())
+            except Exception as e:
+                db.session.rollback()
+                results.append({
+                    "driverID": driver_id,
+                    "status": "failed",
+                    "error": str(e)
+                })
+        else:
+            # No DB, just record the result
             results.append({
                 "driverID": driver_id,
-                "status": "failed",
-                "error": str(e)
+                "message": message,
+                "type": notif_type,
+                "status": telegram_status,
+                "telegram_sent": telegram_status == 'sent'
             })
 
     return jsonify(
