@@ -17,10 +17,10 @@ bookingURL = environ.get("bookingURL")
 paymentURL = environ.get("paymentURL")
 
 # RabbitMQ
-rabbit_host = environ.get("rabbit_host") or "localhost"
-rabbit_port = environ.get("rabbit_port") or 5672
-exchange_name = environ.get("exchange_name") or "order_topic"
-exchange_type = environ.get("exchange_type") or "topic"
+# rabbit_host = environ.get("rabbit_host") or "localhost"
+# rabbit_port = environ.get("rabbit_port") or 5672
+# exchange_name = environ.get("exchange_name") or "order_topic"
+# exchange_type = environ.get("exchange_type") or "topic"
 
 connection = None 
 channel = None
