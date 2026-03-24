@@ -17,10 +17,10 @@ bookingURL = environ.get("bookingURL")
 paymentURL = environ.get("paymentURL")
 
 # RabbitMQ
-# rabbit_host = environ.get("rabbit_host") or "localhost"
-# rabbit_port = environ.get("rabbit_port") or 5672
-# exchange_name = environ.get("exchange_name") or "order_topic"
-# exchange_type = environ.get("exchange_type") or "topic"
+rabbit_host = environ.get("rabbit_host") 
+rabbit_port = environ.get("rabbit_port") 
+exchange_name = environ.get("exchange_name") 
+exchange_type = environ.get("exchange_type") 
 
 connection = None 
 channel = None
@@ -46,6 +46,9 @@ def connectAMQP():
 
 @app.route("/handle-noshow", methods=["POST"])
 def handleNoShow():
+    #connect to AMQP if connection not established
+    if connection is None or not amqp_lib.is_connection_open(connection):
+        connectAMQP()
     #1 invoke the api
     if request.is_json:
         try:
@@ -107,6 +110,12 @@ def handleNoShow():
                     }, 500
 
                 # 6a. Handle No-Show publishes a late-charged event (bookingID, minsLate, feeAmount) to RabbitMQ Topic Exchange via AMQP.
+                message = jsonify({
+                    "bookingID": bookingID,
+                    "minsLate" : 19,
+                    "feeAmount": 20
+                })
+                channel.basic_publish(exchange=exchange_name, routing_key="late.charged", body=message)
 
             elif driverdoesnotshowup:
                 # 3b. Handle No-Show invokes Booking Service via HTTP PUT /booking/{bookingID}/cancel. Booking Service updates the status to no_show.
@@ -148,7 +157,13 @@ def handleNoShow():
                         "message": "Failure to forfeit deposit payment",
                     }, 500
 
-                # 6b. Publish to RabbitMQ
+                # 6b. Handle No-Show publishes a slot.released event (bookingID, slotID, stationID) to RabbitMQ Topic Exchange via AMQP.
+                message = jsonify({
+                    "bookingID": bookingID,
+                    "slotID" : 19,
+                    "stationID": 20
+                })
+                channel.basic_publish(exchange=exchange_name, routing_key="slot.released", body=message)
 
 
         except Exception as e:
@@ -174,3 +189,8 @@ def handleNoShow():
             }
         ), 400
 
+# Execute this program if it is run as a main script (not by 'import')
+if __name__ == "__main__":
+    print("This is flask " + os.path.basename(__file__) + " for placing an order...")
+    connectAMQP()
+    app.run(host="0.0.0.0", port=5100, debug=True)
