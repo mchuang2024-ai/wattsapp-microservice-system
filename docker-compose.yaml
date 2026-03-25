@@ -1,72 +1,112 @@
-version: "3.8"
-
+networks:
+  esd-network:                # key must be esd-network
+    driver: bridge
+    name: esd-network
 services:
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
+    container_name: wattsapp-rabbit
     ports:
-      - "5672:5672"    # AMQP protocol
-      - "15672:15672"  # Management UI (user: guest, pass: guest)
+      - "5672:5672"
+      - "15673:15672"         # Management UI on http://localhost:15672
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password123
+    volumes:
+      - wattsapp_rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - esd-network
 
   driver:
     build:
-      context: ./driver
-      dockerfile: Dockerfile
-    image: charger/driver
+      context: .
+      dockerfile: driver/Dockerfile
+    image: wattsapp/driver
     container_name: driver
     ports:
-      - "5001:5001"
+      - "5001:5001"            # changed from 5011 → 5001
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/driver
+    networks:
+      - esd-network
 
   booking:
     build:
-      context: ./booking
-      dockerfile: Dockerfile
-    image: charger/booking
+      context: .
+      dockerfile: booking/Dockerfile
+    image: wattsapp/booking
     container_name: booking
     ports:
-      - "5003:5003"
+      - "5002:5002"
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/booking
+    networks:
+      - esd-network
 
   payment:
     build:
-      context: ./payment
-      dockerfile: Dockerfile
-    image: charger/payment
+      context: .
+      dockerfile: payment/Dockerfile
+    image: wattsapp/payment
     container_name: payment
     ports:
-      - "5004:5004"
+      - "5003:5003"
+    depends_on:
+      - rabbitmq
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASS=password123
+    networks:
+      - esd-network
 
   notification:
     build:
-      context: ./notification
-      dockerfile: Dockerfile
-    image: charger/notification
+      context: .
+      dockerfile: notification/Dockerfile
+    image: wattsapp/notification
     container_name: notification
     ports:
-      - "5005:5005"
+      - "5004:5004"
+    depends_on:
+      - rabbitmq
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/notification
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASS=password123
+    networks:
+      - esd-network
 
   maintenance:
     build:
-      context: ./maintenance
-      dockerfile: Dockerfile
-    image: charger/maintenance
+      context: .
+      dockerfile: maintenance/Dockerfile
+    image: wattsapp/maintenance
     container_name: maintenance
     ports:
-      - "5006:5006"
+      - "5005:5005"
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/maintenance
+    networks:
+      - esd-network
+  report-fault:
+    build:
+      context: ./report_fault
+    container_name: report-fault
+    ports:
+      - "5010:5010"
+    networks:
+      - esd-network
+  status:
+    build:
+      context: .
+      dockerfile: status/Dockerfile
+    container_name: status
+    ports:
+      - "5006:5003"
+    networks:
+      - esd-network
+volumes:
+  wattsapp_rabbitmq_data:
