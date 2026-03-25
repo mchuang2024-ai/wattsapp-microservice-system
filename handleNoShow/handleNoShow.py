@@ -4,6 +4,7 @@ import json
 import pika
 import sys, os
 from os import environ
+import datetime
 
 import amqp_lib
 from invokes import invoke_http
@@ -43,7 +44,7 @@ def connectAMQP():
         print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
         exit(1) # terminate
 
-
+#handle no show (body:{bookingID, driverID})
 @app.route("/handle-noshow", methods=["POST"])
 def handleNoShow():
     #connect to AMQP if connection not established
@@ -54,6 +55,9 @@ def handleNoShow():
         try:
             #get bookingID from request body
             bookingID = request.json.get("bookingID") 
+            #get bookingID from request body
+            driverID = request.json.get("driverID") 
+            
 
             #2 calls booking service to retrieve the current booking status
             getBookingStatusURL = bookingURL + "/" + bookingID
@@ -67,8 +71,14 @@ def handleNoShow():
                         "message": "Failure in retrieving booking status",
                     }, 500
 
+            #check if it is late check in 
+            if True:
+                lateCheckIn = True
+            else:
+                lateCheckIn = False
+            
             #if driver checks in late
-            if driverchecksinlate:
+            if lateCheckIn:
                 #3a Handle No-Show invokes Booking Service via HTTP PUT /booking/{bookingID}/checkin
                 updateBookingStatusURL = bookingURL + "/" + bookingID + "/checkin"
                 updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(updateBookingStatusURL, method='PUT') 
@@ -117,7 +127,7 @@ def handleNoShow():
                 })
                 channel.basic_publish(exchange=exchange_name, routing_key="late.charged", body=message)
 
-            elif driverdoesnotshowup:
+            else:
                 # 3b. Handle No-Show invokes Booking Service via HTTP PUT /booking/{bookingID}/cancel. Booking Service updates the status to no_show.
                 updateBookingStatusURL = bookingURL + "/" + bookingID + "/cancel"
                 updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(updateBookingStatusURL, method='PUT') 
@@ -165,6 +175,14 @@ def handleNoShow():
                 })
                 channel.basic_publish(exchange=exchange_name, routing_key="slot.released", body=message)
 
+            #final confirmation
+            return jsonify(
+                {
+                    "code" : 201,
+                    "message" : "successfully handled no-show."
+                }
+            ),201
+            
         except Exception as e:
             # Unexpected error in code
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -188,14 +206,6 @@ def handleNoShow():
                 "message": "Invalid JSON input: " + str(request.get_data())
             }
         ), 400
-    
-    #final confirmation
-    return jsonify(
-        {
-            "code" : 201,
-            "message" : "successfully handled no-show."
-        }
-    ),201
 
 # Execute this program if it is run as a main script (not by 'import')
 if __name__ == "__main__":
