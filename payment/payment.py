@@ -9,10 +9,7 @@ app = Flask(__name__)
 
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    os.environ.get('DATABASE_URL',
-    'mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment')
-)
+app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get('dbURL'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 
@@ -41,7 +38,7 @@ class Payment(db.Model):
         }
         return dto
     
-# Make Payment (Create a new payment record)
+# Make Payment (Create a new payment record) (body : {driverID, bookingID, amount})
 @app.route("/payment/hold", methods=['POST'])
 def makePayment():
     driverID = request.json.get('driverID', None)
@@ -70,7 +67,7 @@ def makePayment():
         }
     ), 201
 
-#Extra Payment if Late (Create a new payment record)
+#Extra Payment if Late (Create a new payment record) (body : {driverID, bookingID, minsLate}) (rate of the amount : 0.1 per minute late) 
 @app.route("/payment/late-fee", methods=['POST'])
 def extraPayment():
     bookingID = request.json.get('bookingID', None)
@@ -98,17 +95,18 @@ def extraPayment():
     return jsonify(
         {
             "code": 201,
-            "data": payment.json()
+            "data": payment.json(),
+            "amount": late_fee
         }
     ), 201
 
-#Penalty (Deposit Paid)
+#Penalty (Deposit Paid) (body: {bookingID, driverID})
 @app.route("/payment/forfeit-deposit", methods=['POST'])
 def penaltyPayment():
     bookingID = request.json.get('bookingID', None)
     driverID = request.json.get('driverID', None)
     
-    payment = Payment(bookingID=bookingID, driverID=driverID, type='forfeit', status='pending')
+    payment = Payment(bookingID=bookingID, driverID=driverID, type='forfeit')
 
     try:
         db.session.add(payment)
@@ -130,7 +128,10 @@ def penaltyPayment():
         }
     ), 201
     
-    # Get all payments testing purpose
+
+
+
+# Get all payments testing purpose
 @app.route("/payment", methods=['GET'])
 def get_all_payments():
     try:
@@ -158,7 +159,7 @@ def get_all_payments():
 
     
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5003, debug=True)
+    app.run(host='0.0.0.0', port=5003, debug=False)
 
 
 

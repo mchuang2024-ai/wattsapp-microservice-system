@@ -91,22 +91,45 @@ services:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/maintenance
     networks:
       - esd-network
+
+  view-slots:
+    build:
+      context: .
+      dockerfile: view_slots/Dockerfile
+    image: wattsapp/view-slots
+    container_name: view-slots
+    ports:
+      - "5006:5006"
+    environment:
+      - DRIVER_URL=http://driver:5001
+      - BOOKING_URL=http://booking:5002
+      - OUTSYSTEMS_BASE_URL=https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status
+    networks:
+      - esd-network
+    depends_on:
+      - driver
+      - booking
+      
   report-fault:
     build:
-      context: ./report_fault
+      context: .
+      dockerfile: report_fault/Dockerfile
     container_name: report-fault
     ports:
       - "5010:5010"
+    environment:
+      - MAINTENANCE_URL=http://maintenance:5005
+      - BOOKING_URL=http://booking:5002
+      - PAYMENT_URL=http://payment:5003
+      - NOTIFICATION_URL=http://notification:5004
+      - STATUS_URL=https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status
     networks:
       - esd-network
-  status:
-    build:
-      context: .
-      dockerfile: status/Dockerfile
-    container_name: status
-    ports:
-      - "5006:5003"
-    networks:
-      - esd-network
+    depends_on:
+      - maintenance
+      - booking
+      - payment
+      - notification
+      - rabbitmq
 volumes:
   wattsapp_rabbitmq_data:
