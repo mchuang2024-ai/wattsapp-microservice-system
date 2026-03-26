@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from os import environ
+from datetime import datetime
+from sqlalchemy import func
+
 
 app = Flask(__name__)
 
@@ -70,6 +73,33 @@ def get_booking(bookingID):
         return jsonify({"code": 200, "data": booking.json()})
     return jsonify({"code": 404, "message": "Booking not found."}), 404
 
+# get only uncancelled bookings for a date
+@app.route("/booking/date/<date_str>")
+def get_bookings_by_date(date_str):
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        # Extract only the date from startTime and compare
+        bookings = db.session.scalars(
+            db.select(Bookings).where(
+                (func.date(Bookings.startTime) == target_date) &
+                (Bookings.status != "cancelled")
+            )
+        ).all()
+        
+        if len(bookings):
+            return jsonify({
+                "code": 200,
+                "data": {"bookings": [booking.json() for booking in bookings]},
+                "date": date_str,
+                "count": len(bookings)
+            }), 200
+        return jsonify({"code": 404, "message": f"No bookings found for {date_str}"}), 404
+    except ValueError:
+        return jsonify({"code": 400, "message": "Invalid date format. Use YYYY-MM-DD"}), 400
+    except Exception as e:
+        return jsonify({"code": 500, "message": str(e)}), 500
+    
 # make a booking
 @app.route("/booking", methods=["POST"])
 def create_booking():
