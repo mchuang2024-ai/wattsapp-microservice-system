@@ -64,7 +64,7 @@ def handleNoShow():
 
             #2 calls booking service to retrieve the current booking status
             getBookingStatusURL = bookingURL + "/" + bookingID
-           + bookingStatus_http_status = invoke_http(getBookingStatusURL, method='GET')
+            bookingStatus_http_status = invoke_http(getBookingStatusURL, method='GET')
 
             if bookingStatus_http_status not in range(200, 300):
                     # Return error

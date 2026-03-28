@@ -167,7 +167,7 @@ services:
       - BOOKING_URL=http://booking:5003/bookings
       - RABBITMQ_URL=amqp://admin:password123@rabbitmq:5672/%2F
     ports:
-      - "5001:5001"
+      - "5011:5011"
     depends_on:
       - payment
       - booking
