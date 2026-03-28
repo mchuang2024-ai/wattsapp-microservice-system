@@ -133,3 +133,27 @@ services:
       - rabbitmq
 volumes:
   wattsapp_rabbitmq_data:
+
+  handleNoShow:
+    build:
+      context: .
+      dockerfile: handleNoShow/Dockerfile
+    container_name: handleNoShow
+    ports:
+      - "5100:5100"
+    environment:
+      - DRIVER_URL=http://driver:5001
+      - BOOKING_URL=http://booking:5002
+      - PAYMENT_URL=http://payment:5003
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASS=password123
+    networks:
+      - esd-network
+    depends_on:
+      - driver
+      - booking
+      - payment
+      - rabbitmq
+
+  
