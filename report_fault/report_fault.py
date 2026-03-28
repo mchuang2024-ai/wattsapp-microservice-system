@@ -1,15 +1,15 @@
 from flask import Flask, request, jsonify
 import requests
+import os
 
 app = Flask(__name__)
 
 # service URLs
-MAINTENANCE_URL = "http://localhost:5005"
-BOOKING_URL = "http://localhost:5002"
-PAYMENT_URL = "http://localhost:5003"
-NOTIFICATION_URL = "http://localhost:5004"
-STATUS_URL = "http://localhost:5007"
-
+MAINTENANCE_URL = os.environ.get('MAINTENANCE_URL', 'http://localhost:5005')
+BOOKING_URL = os.environ.get('BOOKING_URL', 'http://localhost:5002')
+PAYMENT_URL = os.environ.get('PAYMENT_URL', 'http://localhost:5003')
+NOTIFICATION_URL = os.environ.get('NOTIFICATION_URL', 'http://localhost:5004')
+STATUS_URL = os.environ.get('STATUS_URL', 'https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status')
 
 @app.route("/reportfault", methods=['POST'])
 def report_fault():

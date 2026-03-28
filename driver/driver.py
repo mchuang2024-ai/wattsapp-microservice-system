@@ -20,7 +20,7 @@ class Driver(db.Model):
     __tablename__ = 'Drivers'
     driverID = db.Column(db.Integer, primary_key=True)
     late_count = db.Column(db.Integer, default=0)
-    telegram_chat_id = db.Column(db.Integer, default= null)
+    telegram_chat_id = db.Column(db.Integer, default= None)
     
     def json(self):
         return {'driverID': self.driverID, 'late_count': self.late_count, 'telegram_chat_id': self.telegram_chat_id}
@@ -51,6 +51,22 @@ def create_driver():
         db.session.rollback()
         return jsonify({"code": 500, "error": str(e)}), 500
     
+@app.route("/drivers/<int:driver_id>", methods=['GET'])
+def get_driver(driver_id):
+    try:
+        driver = db.session.scalar(db.select(Driver).where(Driver.driverID == driver_id))
+        
+        if not driver:
+            return jsonify({"code": 404, "error": "Driver not found"}), 404
+        
+        return jsonify({
+            "code": 200,
+            "data": driver.json()
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"code": 500, "error": str(e)}), 500
+
 @app.route("/drivers/<int:driver_id>/telegram", methods=['POST'])
 def update_telegram_chat(driver_id):
     try:
