@@ -114,6 +114,7 @@ services:
     build:
       context: .
       dockerfile: report_fault/Dockerfile
+    image: wattsapp/report-fault
     container_name: report-fault
     ports:
       - "5010:5010"
@@ -131,13 +132,12 @@ services:
       - payment
       - notification
       - rabbitmq
-volumes:
-  wattsapp_rabbitmq_data:
 
   handleNoShow:
     build:
       context: .
       dockerfile: handleNoShow/Dockerfile
+    image: wattsapp/handleNoshow
     container_name: handleNoShow
     ports:
       - "5100:5100"
@@ -155,5 +155,26 @@ volumes:
       - booking
       - payment
       - rabbitmq
+      
+  make-booking:
+    build:
+      context: .
+      dockerfile: Make-booking/Dockerfile
+    image: wattsapp/make-booking
+    container_name: make-booking
+    environment:
+      - PAYMENT_URL=http://payment:5002/payment/hold
+      - BOOKING_URL=http://booking:5003/bookings
+      - RABBITMQ_URL=amqp://admin:password123@rabbitmq:5672/%2F
+    ports:
+      - "5001:5001"
+    depends_on:
+      - payment
+      - booking
+      - rabbitmq
+    networks:
+      - esd-network
+volumes:
+  wattsapp_rabbitmq_data:
 
   
