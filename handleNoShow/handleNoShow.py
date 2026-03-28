@@ -37,8 +37,6 @@ def connectAMQP():
         connection, channel = amqp_lib.connect(
             hostname="rabbitmq",
             port=5672,
-            username="admin",        # add these if amqp_lib expects them
-            password="password123",  # add these if amqp_lib expects them
             exchange_name=exchange_name,
             exchange_type=exchange_type,
         )
