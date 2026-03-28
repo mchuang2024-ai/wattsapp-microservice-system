@@ -44,24 +44,27 @@ def connectAMQP():
         print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
         exit(1) # terminate
 
-#handle no show (body:{bookingID, driverID})
+#handle no show (body:{bookingID, driverID, latecheckin(True or False)})
 @app.route("/handle-noshow", methods=["POST"])
 def handleNoShow():
     #connect to AMQP if connection not established
     if connection is None or not amqp_lib.is_connection_open(connection):
         connectAMQP()
+
     #1 invoke the api
     if request.is_json:
         try:
             #get bookingID from request body
             bookingID = request.json.get("bookingID") 
-            #get bookingID from request body
+            #get driverID from request body
             driverID = request.json.get("driverID") 
+            #get latecheckin from request body
+            lateCheckIn = request.json.get("lateCheckIn")
             
 
             #2 calls booking service to retrieve the current booking status
             getBookingStatusURL = bookingURL + "/" + bookingID
-            bookingStatus, bookingStatus_http_status = invoke_http(getBookingStatusURL, method='GET')
+           + bookingStatus_http_status = invoke_http(getBookingStatusURL, method='GET')
 
             if bookingStatus_http_status not in range(200, 300):
                     # Return error
@@ -72,7 +75,7 @@ def handleNoShow():
                     }, 500
 
             #check if it is late check in 
-            if True:
+            if lateCheckIn == 'True':
                 lateCheckIn = True
             else:
                 lateCheckIn = False
