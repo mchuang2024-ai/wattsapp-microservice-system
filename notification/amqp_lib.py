@@ -5,12 +5,16 @@ References:
 https://pika.readthedocs.io/en/stable/_modules/pika/exceptions.html#ConnectionClosed
 """
 
+import os
 import time
 import pika
 
 
 def connect(hostname, port, exchange_name, exchange_type, max_retries=12, retry_interval=5):
     retries = 0
+    username = os.environ.get("RABBITMQ_USER", "admin")
+    password = os.environ.get("RABBITMQ_PASS", "password123")
+    credentials = pika.PlainCredentials(username, password)
 
     # loop to retry connection up to max_retries times
     # with a retry interval of retry_interval seconds
@@ -23,6 +27,7 @@ def connect(hostname, port, exchange_name, exchange_type, max_retries=12, retry_
                 pika.ConnectionParameters(
                     host=hostname,
                     port=port,
+                    credentials=credentials,
                     heartbeat=300,
                     blocked_connection_timeout=300,
                 )
