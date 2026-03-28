@@ -124,6 +124,9 @@ services:
       - PAYMENT_URL=http://payment:5003
       - NOTIFICATION_URL=http://notification:5004
       - STATUS_URL=https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASS=password123
     networks:
       - esd-network
     depends_on:
@@ -136,8 +139,8 @@ services:
   handleNoShow:
     build:
       context: .
-      dockerfile: handleNoShow/Dockerfile
-    image: wattsapp/handleNoshow
+      dockerfile: handleNoShow/dockerfile
+    image: wattsapp/handlenoshow
     container_name: handleNoShow
     ports:
       - "5100:5100"
@@ -159,7 +162,7 @@ services:
   make-booking:
     build:
       context: .
-      dockerfile: Make-booking/Dockerfile
+      dockerfile: Make_booking/Dockerfile
     image: wattsapp/make-booking
     container_name: make-booking
     environment:
@@ -167,7 +170,7 @@ services:
       - BOOKING_URL=http://booking:5003/bookings
       - RABBITMQ_URL=amqp://admin:password123@rabbitmq:5672/%2F
     ports:
-      - "5001:5001"
+      - "5011:5011"
     depends_on:
       - payment
       - booking

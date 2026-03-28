@@ -35,10 +35,10 @@ def connectAMQP():
     print("  Connecting to AMQP broker...")
     try:
         connection, channel = amqp_lib.connect(
-                hostname=rabbit_host,
-                port=rabbit_port,
-                exchange_name=exchange_name,
-                exchange_type=exchange_type,
+            hostname="rabbitmq",
+            port=5672,
+            exchange_name=exchange_name,
+            exchange_type=exchange_type,
         )
     except Exception as exception:
         print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")
@@ -64,7 +64,7 @@ def handleNoShow():
 
             #2 calls booking service to retrieve the current booking status
             getBookingStatusURL = bookingURL + "/" + bookingID
-           + bookingStatus_http_status = invoke_http(getBookingStatusURL, method='GET')
+            bookingStatus_http_status = invoke_http(getBookingStatusURL, method='GET')
 
             if bookingStatus_http_status not in range(200, 300):
                     # Return error

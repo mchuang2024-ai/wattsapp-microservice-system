@@ -27,7 +27,7 @@ def publish_booking_created(booking_id, slot_id, driver_id):
         'driverID': driver_id,
         'station': 'Sengkang Hub'
     }
-    connection = pika.BlockingConnection(pika.URLParameters(config.RABBITMQ_URL))
+    connection = pika.BlockingConnection(pika.URLParameters('amqp://admin:password123@rabbitmq:5672/'))
     channel = connection.channel()
     channel.exchange_declare(exchange='pulsepark.events', exchange_type='topic', durable=True)
     channel.basic_publish(
@@ -148,4 +148,4 @@ def internal_error(error):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5011, debug=True)
