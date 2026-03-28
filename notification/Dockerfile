@@ -5,12 +5,15 @@ WORKDIR /app
 # relative to docker build file
 COPY notification/notification.py .
 COPY notification/notification_amqp.py .
+COPY notification/start.sh .
 COPY amqp.reqs.txt .
 COPY http.reqs.txt .
 
 RUN pip install --no-cache-dir -r http.reqs.txt -r amqp.reqs.txt
 COPY amqp_lib.py invokes.py ./
 
-CMD ["python", "notification_amqp.py"]
+RUN chmod +x start.sh
+
+CMD ["sh", "start.sh"]
 
 
