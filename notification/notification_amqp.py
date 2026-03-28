@@ -2,8 +2,8 @@
 notification_amqp.py — AMQP consumer for the Notification microservice.
 
 Runs as a separate process alongside notification.py.
-Subscribes to the wattsapp_topic exchange and handles all routing keys
-that should trigger a notification (booking.*, late.*, slot.*, charger.*, waitlist.*).
+Subscribes to the 'notification_queue' on the 'wattsapp_topic' exchange.
+The queue is pre-created by rabbitmq/amqp_setup.py with routing key '#'.
 
 Expected single-driver message format:
 {
@@ -30,20 +30,13 @@ import os
 import amqp_lib
 from notification import app, db, Notification, send_telegram_message
 
-# ── RabbitMQ configuration (override via environment variables) ────────────
-RABBIT_HOST   = os.environ.get("rabbit_host",    "localhost")
-RABBIT_PORT   = int(os.environ.get("rabbit_port", 5672))
-EXCHANGE_NAME = os.environ.get("exchange_name",  "wattsapp_topic")
-EXCHANGE_TYPE = os.environ.get("exchange_type",  "topic")
-QUEUE_NAME    = os.environ.get("queue_name",     "Notification")
-
-ROUTING_KEYS  = [
-    "booking.*",
-    "late.*",
-    "slot.*",
-    "charger.*",
-    "waitlist.*",
-]
+# ── RabbitMQ configuration ─────────────────────────────────────────────────
+# Override via environment variables (set automatically by docker-compose)
+RABBIT_HOST   = os.environ.get("RABBITMQ_HOST", "localhost")
+RABBIT_PORT   = int(os.environ.get("RABBITMQ_PORT", 5672))
+EXCHANGE_NAME = "wattsapp_topic"
+EXCHANGE_TYPE = "topic"
+QUEUE_NAME    = "notification_queue"
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -70,8 +63,8 @@ def process_notification(driver_id, chat_id, message, notif_type):
             db.session.add(notification)
             db.session.commit()
             print(
-                f"[AMQP] Logged notification — "
-                f"driverID={driver_id}, type={notif_type}, status={telegram_status}"
+                f"[AMQP] Logged — driverID={driver_id}, "
+                f"type={notif_type}, status={telegram_status}"
             )
         except Exception as e:
             db.session.rollback()
@@ -84,7 +77,7 @@ def callback(channel, method, properties, body):
     print(f"[AMQP] Received message (routing key: {method.routing_key})")
 
     try:
-        data = json.loads(body)
+        data = json.loads(body.decode("utf-8"))
     except (json.JSONDecodeError, TypeError) as e:
         print(f"[AMQP] Failed to decode message body: {e}")
         return
@@ -92,7 +85,7 @@ def callback(channel, method, properties, body):
     notif_type = data.get("type", "unknown")
     message    = data.get("message", "")
 
-    # Broadcast format (e.g. waitlist notifications with multiple drivers)
+    # Broadcast format (e.g. waitlist — multiple drivers)
     if "drivers" in data:
         drivers = data["drivers"]
         print(f"[AMQP] Broadcasting to {len(drivers)} driver(s) — type={notif_type}")
@@ -122,31 +115,14 @@ if __name__ == "__main__":
     print(f"  RabbitMQ : {RABBIT_HOST}:{RABBIT_PORT}")
     print(f"  Exchange : {EXCHANGE_NAME} ({EXCHANGE_TYPE})")
     print(f"  Queue    : {QUEUE_NAME}")
-    print(f"  Keys     : {', '.join(ROUTING_KEYS)}")
+    print("  NOTE: Queue must be pre-created via rabbitmq/amqp_setup.py")
     print("=" * 55)
 
-    # Create connection and declare exchange
-    connection, channel = amqp_lib.check_setup(
-        RABBIT_HOST, RABBIT_PORT, EXCHANGE_NAME, EXCHANGE_TYPE
+    amqp_lib.start_consuming(
+        hostname=RABBIT_HOST,
+        port=RABBIT_PORT,
+        exchange_name=EXCHANGE_NAME,
+        exchange_type=EXCHANGE_TYPE,
+        queue_name=QUEUE_NAME,
+        callback=callback,
     )
-
-    # Declare queue and bind each routing key
-    channel.queue_declare(queue=QUEUE_NAME, durable=True)
-    for routing_key in ROUTING_KEYS:
-        channel.queue_bind(
-            exchange=EXCHANGE_NAME,
-            queue=QUEUE_NAME,
-            routing_key=routing_key,
-        )
-        print(f"  Bound '{QUEUE_NAME}' -> '{routing_key}'")
-
-    # Begin consuming
-    channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(
-        queue=QUEUE_NAME,
-        on_message_callback=callback,
-        auto_ack=True,
-    )
-
-    print("\n[AMQP] Waiting for messages. Press CTRL+C to exit.\n")
-    channel.start_consuming()
