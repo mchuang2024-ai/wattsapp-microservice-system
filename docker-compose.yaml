@@ -136,8 +136,8 @@ services:
   handleNoShow:
     build:
       context: .
-      dockerfile: handleNoShow/Dockerfile
-    image: wattsapp/handleNoshow
+      dockerfile: handleNoShow/dockerfile
+    image: wattsapp/handlenoshow
     container_name: handleNoShow
     ports:
       - "5100:5100"
@@ -159,7 +159,7 @@ services:
   make-booking:
     build:
       context: .
-      dockerfile: Make-booking/Dockerfile
+      dockerfile: Make_booking/Dockerfile
     image: wattsapp/make-booking
     container_name: make-booking
     environment:
