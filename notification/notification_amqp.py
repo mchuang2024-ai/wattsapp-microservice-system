@@ -34,6 +34,8 @@ from notification import app, db, Notification, send_telegram_message
 # Override via environment variables (set automatically by docker-compose)
 RABBIT_HOST   = os.environ.get("RABBITMQ_HOST", "localhost")
 RABBIT_PORT   = int(os.environ.get("RABBITMQ_PORT", 5672))
+RABBIT_USER   = os.environ.get("RABBITMQ_USER", "admin")
+RABBIT_PASS   = os.environ.get("RABBITMQ_PASS", "password123")
 EXCHANGE_NAME = "wattsapp_topic"
 EXCHANGE_TYPE = "topic"
 QUEUE_NAME    = "notification_queue"
@@ -118,11 +120,28 @@ if __name__ == "__main__":
     print("  NOTE: Queue must be pre-created via rabbitmq/amqp_setup.py")
     print("=" * 55)
 
-    amqp_lib.start_consuming(
-        hostname=RABBIT_HOST,
-        port=RABBIT_PORT,
-        exchange_name=EXCHANGE_NAME,
-        exchange_type=EXCHANGE_TYPE,
-        queue_name=QUEUE_NAME,
-        callback=callback,
-    )
+    connection = None
+    while True:
+        try:
+            connection, channel = amqp_lib.connect(
+                hostname=RABBIT_HOST,
+                port=RABBIT_PORT,
+                exchange_name=EXCHANGE_NAME,
+                exchange_type=EXCHANGE_TYPE,
+                username=RABBIT_USER,
+                password=RABBIT_PASS,
+            )
+            print(f"[AMQP] Consuming from queue: {QUEUE_NAME}")
+            channel.basic_consume(
+                queue=QUEUE_NAME, on_message_callback=callback, auto_ack=True
+            )
+            channel.start_consuming()
+
+        except amqp_lib.pika.exceptions.ConnectionClosedByBroker:
+            print("[AMQP] Connection closed. Reconnecting...")
+            continue
+
+        except KeyboardInterrupt:
+            if connection:
+                amqp_lib.close(connection, channel)
+            break
