@@ -35,10 +35,10 @@ def connectAMQP():
     print("  Connecting to AMQP broker...")
     try:
         connection, channel = amqp_lib.connect(
-                hostname=rabbit_host,
-                port=rabbit_port,
-                exchange_name=exchange_name,
-                exchange_type=exchange_type,
+            hostname="rabbitmq",
+            port=5672,
+            exchange_name=exchange_name,
+            exchange_type=exchange_type,
         )
     except Exception as exception:
         print(f"  Unable to connect to RabbitMQ.\n     {exception=}\n")

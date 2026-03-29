@@ -8,8 +8,7 @@ https://pika.readthedocs.io/en/stable/_modules/pika/exceptions.html#ConnectionCl
 import time
 import pika
 
-
-def connect(hostname, port, exchange_name, exchange_type, max_retries=12, retry_interval=5):
+def connect(hostname, port, exchange_name, exchange_type, username="guest", password="guest", max_retries=12, retry_interval=5):
     retries = 0
 
     # loop to retry connection up to max_retries times
@@ -23,6 +22,7 @@ def connect(hostname, port, exchange_name, exchange_type, max_retries=12, retry_
                 pika.ConnectionParameters(
                     host=hostname,
                     port=port,
+                    credentials=pika.PlainCredentials(username, password),
                     heartbeat=300,
                     blocked_connection_timeout=300,
                 )

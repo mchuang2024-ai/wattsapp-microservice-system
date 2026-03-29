@@ -4,4 +4,6 @@ COPY Make_Booking/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY amqp_lib.py invokes.py ./
 COPY Make_Booking/app.py .
+COPY Make_Booking/config.py .
+COPY Make_Booking/models.py .
 CMD ["python", "app.py"]

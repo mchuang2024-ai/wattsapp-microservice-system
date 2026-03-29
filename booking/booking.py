@@ -115,7 +115,7 @@ def create_booking():
         endTime=data["endTime"],
         slotID=data["slotID"],
         depositAmount=5.0,  
-        minsLate=data.get("minsLate", 0)
+        minsLate=0
     )
 
     try:
@@ -136,14 +136,33 @@ def create_booking():
     return jsonify({"code": 201, "data": booking.json()}), 201
 
 
-# Update status to checkin
+# Update status to checkin. if earlier than starttime, reject. 
+# if exactly on time or later, will calculate how many min late. floor div
+# Needs checkintime in request body
+# {
+#   "checkinTime": "2026-03-20 08:05:00"
+# }
 @app.route("/booking/<int:bookingID>/checkin", methods=["PUT"])
 def update_checkin(bookingID):
     booking = db.session.scalar(db.select(Bookings).filter_by(bookingID=bookingID))
     if not booking:
         return jsonify({"code": 404, "message": "Booking not found."}), 404
     
+    data = request.get_json()
+    if not data or "checkinTime" not in data:
+        return jsonify({"code": 400, "message": "Missing checkinTime in request."}), 400
+
+    try:
+        checkin_time = datetime.strptime(data["checkinTime"], '%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return jsonify({"code": 400, "message": "Invalid checkinTime format. Use: YYYY-MM-DD HH:MM:SS"}), 400
+
+    if checkin_time < booking.startTime:
+        return jsonify({"code": 400, "message": "Too early to check in."}), 400
+
+    mins_late = int((checkin_time - booking.startTime).total_seconds() // 60)
     booking.status = "checked-in"
+    booking.minsLate = mins_late 
     db.session.commit()
     return jsonify({"code": 200, "data": booking.json()})
 
