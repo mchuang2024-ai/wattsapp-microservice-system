@@ -13,15 +13,15 @@ app = Flask(__name__)
 
 CORS(app)
 
-driverURL = environ.get("driverURL") 
-bookingURL = environ.get("bookingURL")
-paymentURL = environ.get("paymentURL")
+driverURL = environ.get("DRIVER_URL") or "http://localhost:5001"
+bookingURL = environ.get("BOOKING_URL") or "http://localhost:5002"
+paymentURL = environ.get("PAYMENT_URL") or "http://localhost:5003"
 
 # RabbitMQ
-rabbit_host = environ.get("rabbit_host") 
-rabbit_port = environ.get("rabbit_port") 
-exchange_name = environ.get("exchange_name") 
-exchange_type = environ.get("exchange_type") 
+rabbit_host = environ.get("RABBIT_HOST") or "localhost"
+rabbit_port = environ.get("RABBIT_PORT") or 5672
+exchange_name = environ.get("EXCHANGE_NAME") or "wattsapp_topic"
+exchange_type = environ.get("EXCHANGE_TYPE") or "topic"
 
 connection = None 
 channel = None
@@ -37,6 +37,8 @@ def connectAMQP():
         connection, channel = amqp_lib.connect(
             hostname="rabbitmq",
             port=5672,
+            username="admin",
+            password="password123",
             exchange_name=exchange_name,
             exchange_type=exchange_type,
         )
@@ -51,57 +53,51 @@ def handleNoShow():
     if connection is None or not amqp_lib.is_connection_open(connection):
         connectAMQP()
 
-    #1 invoke the api
+    #1 
     if request.is_json:
         try:
-            #get bookingID from request body
             bookingID = request.json.get("bookingID") 
-            #get driverID from request body
             driverID = request.json.get("driverID") 
-            #get latecheckin from request body
             lateCheckIn = request.json.get("lateCheckIn")
             
+            #2 
+            booking, booking_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}", method='GET')
 
-            #2 calls booking service to retrieve the current booking status
-            getBookingStatusURL = bookingURL + "/" + bookingID
-            bookingStatus_http_status = invoke_http(getBookingStatusURL, method='GET')
-
-            if bookingStatus_http_status not in range(200, 300):
+            if booking_http_status not in range(200, 300):
                     # Return error
-                    return {
+                    return jsonify({
                         "code": 500,
-                        "data": {"bookingStatus": bookingStatus },
+                        "data": {"booking": booking },
                         "message": "Failure in retrieving booking status",
-                    }, 500
+                    }), 500
 
-            #check if it is late check in 
+
             if lateCheckIn == 'True':
                 lateCheckIn = True
             else:
                 lateCheckIn = False
             
-            #if driver checks in late
+            #3a
             if lateCheckIn:
-                #3a Handle No-Show invokes Booking Service via HTTP PUT /booking/{bookingID}/checkin
-                updateBookingStatusURL = bookingURL + "/" + bookingID + "/checkin"
-                updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(updateBookingStatusURL, method='PUT') 
-
-                if updateBookingStatus_http_status not in range(200, 300):
+                checkinTime = { "checkinTime" : datetime.datetime.now() }
+                updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}/checkin", method='PUT', json=checkinTime)
                     # Return error
+                if updateBookingStatus_http_status not in range(200, 300):
                     return jsonify({
                         "code": 500,
                         "data": {"updateBookingStatusResult": updateBookingStatusResult },
                         "message": "Failure in updating booking status to late check in",
                     }), 500
 
-                # 4a. Handle No-Show invokes Payment Service via HTTP POST /payment/late-fee {bookingID, minsLate} to charge a proportional per-minute late fee against the driver's deposit.
-                lateFeePaymentURL = paymentURL + "/late-fee"
-                jsonData = json.dumps({
+                # 4a. 
+                minsLate = booking["data"]["minsLate"]
+                paymentData = {
                     "bookingID" : bookingID,
-                    "minsLate" : 19
-                })
-                lateFeePaymentResult, lateFeePayment_http_status = invoke_http(lateFeePaymentURL, method="PUT", json=jsonData)
-
+                    "driverID" : driverID,
+                    "minsLate" : minsLate
+                }
+                lateFeePaymentResult, lateFeePayment_http_status = invoke_http(f"{paymentURL}/payment/late-fee", method="POST", json=paymentData)
+                amount = lateFeePaymentResult["amount"]
                 if lateFeePayment_http_status not in range(200, 300):
                     # Return error
                     return jsonify({
@@ -110,9 +106,8 @@ def handleNoShow():
                         "message": "Failure to record late fee payment",
                     }), 500
 
-                # 5a. Handle No-Show invokes Driver Service via HTTP PUT /driver/{driverID}/late-count to increment the driver's late arrival count.
-                lateCountDriverURL = driverURL + "/" + driverID + "/late-count"
-                lateCountDriverResult, lateCountDriver_http_status = invoke_http(lateCountDriverURL, method="PUT")
+                # 5a. 
+                lateCountDriverResult, lateCountDriver_http_status = invoke_http(f"{driverURL}/driver/{driverID}/late-count", method="PUT")
 
                 if lateCountDriver_http_status not in range(200, 300):
                     # Return error
@@ -122,18 +117,18 @@ def handleNoShow():
                         "message": "Failure to increment the driver's late arrival count",
                     }), 500
 
-                # 6a. Handle No-Show publishes a late-charged event (bookingID, minsLate, feeAmount) to RabbitMQ Topic Exchange via AMQP.
+                # 6a. 
                 message = json.dumps({
                     "bookingID": bookingID,
-                    "minsLate" : 19,
-                    "feeAmount": 20
+                    "minsLate" : minsLate,
+                    "amount" : amount,
+                    "message": "Your booking was checked in late. A late fee has been applied to your account."
                 })
                 channel.basic_publish(exchange=exchange_name, routing_key="late.charged", body=message)
 
             else:
-                # 3b. Handle No-Show invokes Booking Service via HTTP PUT /booking/{bookingID}/cancel. Booking Service updates the status to no_show.
-                updateBookingStatusURL = bookingURL + "/" + bookingID + "/cancel"
-                updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(updateBookingStatusURL, method='PUT') 
+                # 3b.
+                updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}/cancel", method="PUT") 
 
                 if updateBookingStatus_http_status not in range(200, 300):
                     # Return error
@@ -143,9 +138,8 @@ def handleNoShow():
                         "message": "Failure to update the booking status to no_show",
                     }), 500
 
-                # 4b. Handle No-Show invokes Driver Service to increase their late count (same as #5a)
-                lateCountDriverURL = driverURL + "/" + driverID + "/late-count"
-                lateCountDriverResult, lateCountDriver_http_status = invoke_http(lateCountDriverURL, method="PUT")
+                # 4b. 
+                lateCountDriverResult, lateCountDriver_http_status = invoke_http(f"{driverURL}/driver/{driverID}/late-count", method="PUT")
 
                 if lateCountDriver_http_status not in range(200, 300):
                     # Return error
@@ -155,12 +149,12 @@ def handleNoShow():
                         "message": "Failure to increment the driver's late arrival count",
                     }), 500
 
-                # 5b. Handle No-Show invokes Payment Service to forfeit deposit
-                forfeitDepositURL = paymentURL + "/forfeit-deposit"
-                jsonData = json.dumps({
+                # 5b. 
+                paymentData = {
                     "bookingID" : bookingID,
-                })
-                forfeitDepositResult, forfeitDeposit_http_status = invoke_http(forfeitDepositURL, method="POST", json=jsonData)
+                    "driverID" : driverID
+                }
+                forfeitDepositResult, forfeitDeposit_http_status = invoke_http(f"{paymentURL}/payment/forfeit-deposit", method="POST", json=paymentData)
 
                 if forfeitDeposit_http_status not in range(200, 300):
                     # Return error
@@ -170,11 +164,10 @@ def handleNoShow():
                         "message": "Failure to forfeit deposit payment",
                     }), 500
 
-                # 6b. Handle No-Show publishes a slot.released event (bookingID, slotID, stationID) to RabbitMQ Topic Exchange via AMQP.
+                # 6b. 
                 message = json.dumps({
                     "bookingID": bookingID,
-                    "slotID" : 19,
-                    "stationID": 20
+                    "message": "Your booking was marked as no-show. Your deposit has been forfeited."
                 })
                 channel.basic_publish(exchange=exchange_name, routing_key="slot.released", body=message)
 
