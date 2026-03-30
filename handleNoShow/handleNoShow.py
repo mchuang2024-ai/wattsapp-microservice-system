@@ -22,6 +22,8 @@ rabbit_host = environ.get("RABBIT_HOST") or "localhost"
 rabbit_port = environ.get("RABBIT_PORT") or 5672
 exchange_name = environ.get("EXCHANGE_NAME") or "wattsapp_topic"
 exchange_type = environ.get("EXCHANGE_TYPE") or "topic"
+username = environ.get("RABBIT_USERNAME") or "admin"
+password = environ.get("RABBIT_PASSWORD") or "password123"
 
 connection = None 
 channel = None
@@ -35,10 +37,10 @@ def connectAMQP():
     print("  Connecting to AMQP broker...")
     try:
         connection, channel = amqp_lib.connect(
-            hostname="rabbitmq",
-            port=5672,
-            username="admin",
-            password="password123",
+            hostname=rabbit_host,
+            port=rabbit_port,
+            username=username,
+            password=password,
             exchange_name=exchange_name,
             exchange_type=exchange_type,
         )
