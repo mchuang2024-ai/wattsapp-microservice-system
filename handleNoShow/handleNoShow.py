@@ -81,7 +81,7 @@ def handleNoShow():
             
             #3a
             if lateCheckIn:
-                checkinTime = { "checkinTime" : datetime.datetime.now() }
+                checkinTime = { "checkinTime" : str(datetime.datetime.now()) }
                 updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}/checkin", method='PUT', json=checkinTime)
                     # Return error
                 if updateBookingStatus_http_status not in range(200, 300):
