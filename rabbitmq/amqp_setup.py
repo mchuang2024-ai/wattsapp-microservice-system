@@ -28,6 +28,7 @@ def create_exchange(hostname, port, exchange_name, exchange_type):
             host=hostname,
             port=port,
             heartbeat=300,
+            credentials=pika.PlainCredentials("admin","password123"),
             blocked_connection_timeout=300,
         )
     )
