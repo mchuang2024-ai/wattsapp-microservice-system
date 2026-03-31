@@ -89,6 +89,29 @@ def update_telegram_chat(driver_id):
         db.session.rollback()
         return jsonify({"code": 500, "error": str(e)}), 500
 
+@app.route("/driver/<int:driver_id>/late-count", methods=['PUT'])
+def add_late_count(driver_id):
+    try:
+        driver = db.session .scalar(db.select(Driver).where(Driver.driverID == driver_id))
+        if not driver:
+            return jsonify({
+                "code" : 404,
+                "message" : f"No driver with driverID = {driver_id} found"
+             })
+        late_count = driver.late_count + 1
+        driver.late_count = late_count
+        db.session.commit()
+        return jsonify({
+            "code" : 200,
+            "message" : f"Driver late-count added by 1, currently {late_count}"
+        })
+    except Exception as e:
+        return jsonify({
+            "code": 500,
+            "message": f"unexpected error: {e}"
+        })
+        
+
 if __name__ == '__main__':
     print("Driver Service: Port 5001")
     app.run(host='0.0.0.0', port=5001, debug=True)
