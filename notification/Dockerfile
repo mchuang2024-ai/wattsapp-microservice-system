@@ -6,7 +6,7 @@ WORKDIR /app
 COPY notification/notification.py .
 COPY notification/notification_amqp.py .
 COPY notification/start.sh .
-COPY rabbitmq/amqp_setup.py .
+# COPY rabbitmq/amqp_setup.py .
 COPY amqp.reqs.txt .
 COPY http.reqs.txt .
 
