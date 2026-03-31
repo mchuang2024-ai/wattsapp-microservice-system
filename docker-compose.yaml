@@ -136,21 +136,24 @@ services:
       - notification
       - rabbitmq
 
-  handleNoShow:
+  handle-No-Show:
     build:
       context: .
       dockerfile: handleNoShow/dockerfile
     image: wattsapp/handlenoshow
-    container_name: handleNoShow
+    container_name: handle-No-Show
     ports:
       - "5100:5100"
     environment:
       - DRIVER_URL=http://driver:5001
       - BOOKING_URL=http://booking:5002
       - PAYMENT_URL=http://payment:5003
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_USER=admin
-      - RABBITMQ_PASS=password123
+      - RABBIT_HOST=rabbitmq
+      - RABBIT_PORT=5672
+      - EXCHANGE_NAME=wattsapp_topic
+      - EXCHANGE_TYPE=topic
+      - RABBIT_USERNAME=admin
+      - RABBIT_PASSWORD=password123
     networks:
       - esd-network
     depends_on:

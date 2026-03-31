@@ -13,17 +13,17 @@ app = Flask(__name__)
 
 CORS(app)
 
-driverURL = environ.get("DRIVER_URL") or "http://localhost:5001"
-bookingURL = environ.get("BOOKING_URL") or "http://localhost:5002"
-paymentURL = environ.get("PAYMENT_URL") or "http://localhost:5003"
+driverURL = (environ.get("DRIVER_URL") or "http://localhost:5001")
+bookingURL = (environ.get("BOOKING_URL") or "http://localhost:5002")
+paymentURL = (environ.get("PAYMENT_URL") or "http://localhost:5003")
 
 # RabbitMQ
-rabbit_host = environ.get("RABBIT_HOST") or "localhost"
-rabbit_port = environ.get("RABBIT_PORT") or 5672
-exchange_name = environ.get("EXCHANGE_NAME") or "wattsapp_topic"
-exchange_type = environ.get("EXCHANGE_TYPE") or "topic"
-username = environ.get("RABBIT_USERNAME") or "admin"
-password = environ.get("RABBIT_PASSWORD") or "password123"
+rabbit_host = (environ.get("RABBIT_HOST") or "localhost")
+rabbit_port = (environ.get("RABBIT_PORT") or 5672)
+exchange_name = (environ.get("EXCHANGE_NAME") or "wattsapp_topic")
+exchange_type = (environ.get("EXCHANGE_TYPE") or "topic")
+username = (environ.get("RABBIT_USERNAME") or "admin")
+password = (environ.get("RABBIT_PASSWORD") or "password123")
 
 connection = None 
 channel = None
