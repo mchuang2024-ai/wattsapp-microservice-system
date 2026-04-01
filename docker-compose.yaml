@@ -69,8 +69,8 @@ services:
     container_name: notification
     ports:
       - "5004:5004"
-    # depends_on:
-    #   - rabbitmq
+    depends_on:
+      - rabbitmq
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/notification
       - RABBITMQ_HOST=rabbitmq
@@ -134,7 +134,7 @@ services:
       - booking
       - payment
       - notification
-      # - rabbitmq
+      - rabbitmq
 
   handle-No-Show:
     build:
@@ -160,7 +160,7 @@ services:
       - driver
       - booking
       - payment
-      # - rabbitmq
+      - rabbitmq
       
   make-booking:
     build:
@@ -177,7 +177,7 @@ services:
     depends_on:
       - payment
       - booking
-      # - rabbitmq
+      - rabbitmq
     networks:
       - esd-network
 volumes:
