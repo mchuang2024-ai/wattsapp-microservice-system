@@ -182,7 +182,9 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const BASE_URL = '';
+    const VIEW_SLOTS_URL = 'http://localhost:5006';
+    const MAKE_BOOKING_URL = 'http://localhost:5011';
+    const DRIVER_URL = 'http://localhost:5001';
 
     const MOCK_SLOTS = [
       { id:'SLT-001', location:'North Hub',   type:'fast', power:'50kW',  status:'available', deposit:5 },
@@ -216,9 +218,18 @@
 
     async function fetchSlots(params = '') {
       try {
-        const res = await fetch(`${BASE_URL}/slots?status=available${params}`);
+        const date = document.getElementById('searchDate').value || new Date().toISOString().split('T')[0];
+        const res = await fetch(`${VIEW_SLOTS_URL}/view-slots?date=${date}&driverID=1${params}`);
         if(!res.ok) throw new Error();
-        return await res.json();
+        const data = await res.json();
+        return (data.slots || []).map(s => ({
+          id: s.slotID || s.id,
+          location: s.location || 'Unknown',
+          type: s.type || 'fast',
+          power: s.powerOutput || 'Unknown',
+          status: s.status || 'available',
+          deposit: s.deposit || 5,
+        }));
       } catch(_) { return MOCK_SLOTS; }
     }
 
@@ -297,7 +308,7 @@
       result.classList.remove('hidden');
 
       try {
-        const res = await fetch(`${BASE_URL}/Driver/${encodeURIComponent(id)}/late-count`);
+        const res = await fetch(`${DRIVER_URL}/drivers/${encodeURIComponent(id)}`);
         const data = await res.json();
         const count = data.lateCount || data.count || 0;
         const blocked = count >= 3;
@@ -415,7 +426,7 @@
       };
 
       try {
-        const res = await fetch(`${BASE_URL}/create-booking`, {
+        const res = await fetch(`${MAKE_BOOKING_URL}/create-booking`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),

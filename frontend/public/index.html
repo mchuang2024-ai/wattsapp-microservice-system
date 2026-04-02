@@ -173,7 +173,8 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const BASE_URL = '';
+    const VIEW_SLOTS_URL = 'http://localhost:5006';
+    const BOOKING_URL = 'http://localhost:5002';
     let allStations = [];
     let currentView = 'grid';
     let autoRefreshTimer;
@@ -214,9 +215,19 @@
 
     async function fetchStations() {
       try {
-        const res = await fetch(`${BASE_URL}/slots?status=available`);
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=1`);
         if(!res.ok) throw new Error('API error');
-        return await res.json();
+        const data = await res.json();
+        return (data.slots || []).map(s => ({
+          id: s.slotID || s.id,
+          location: s.location || 'Unknown',
+          type: s.type || 'fast',
+          status: s.status || 'available',
+          deposit: s.deposit || 5,
+          power: s.powerOutput || 'Unknown',
+          spots: s.spots || '--',
+        }));
       } catch(_) {
         return MOCK_STATIONS;
       }

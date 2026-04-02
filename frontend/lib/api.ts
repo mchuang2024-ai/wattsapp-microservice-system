@@ -1,10 +1,12 @@
 // API Configuration - Update this to point to your backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://make-booking:5011';
-const BOOKING_SERVICE_URL = process.env.NEXT_PUBLIC_BOOKING_URL || 'http://booking:5002';
-const DRIVER_SERVICE_URL = process.env.NEXT_PUBLIC_DRIVER_URL || 'http://driver:5001';
-const VIEW_SLOTS_SERVICE_URL = process.env.NEXT_PUBLIC_VIEW_SLOTS_URL || 'http://view-slots:5006';
-const HANDLE_NOSHOW_URL = process.env.NEXT_PUBLIC_HANDLE_NOSHOW_URL || 'http://handle-No-Show:5100';
-const REPORT_FAULT_URL = process.env.NEXT_PUBLIC_REPORT_FAULT_URL || 'http://report-fault:5010';
+// When running locally, use localhost with exposed ports from docker-compose
+// When running inside Docker, set NEXT_PUBLIC_* env vars to use service names
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5011';
+const BOOKING_SERVICE_URL = process.env.NEXT_PUBLIC_BOOKING_URL || 'http://localhost:5002';
+const DRIVER_SERVICE_URL = process.env.NEXT_PUBLIC_DRIVER_URL || 'http://localhost:5001';
+const VIEW_SLOTS_SERVICE_URL = process.env.NEXT_PUBLIC_VIEW_SLOTS_URL || 'http://localhost:5006';
+const HANDLE_NOSHOW_URL = process.env.NEXT_PUBLIC_HANDLE_NOSHOW_URL || 'http://localhost:5100';
+const REPORT_FAULT_URL = process.env.NEXT_PUBLIC_REPORT_FAULT_URL || 'http://localhost:5010';
 
 // Types
 export interface ChargingSlot {

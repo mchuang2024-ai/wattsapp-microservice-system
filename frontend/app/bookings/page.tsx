@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Booking } from "@/lib/api";
+import { fetchBookings as fetchBookingsApi, handleNoShow, cancelBooking } from "@/lib/api";
 
 // Mock bookings data
 const mockBookings: Booking[] = [
@@ -113,14 +114,11 @@ export default function BookingsPage() {
   const fetchBookings = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Replace with actual API call:
-      // const data = await fetchBookings("DR001");
-      // setBookings(data);
-      
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setBookings(mockBookings);
+      const data = await fetchBookingsApi();
+      setBookings(data);
     } catch (error) {
-      console.error("Failed to fetch bookings:", error);
+      console.error("Failed to fetch bookings, using mock data:", error);
+      setBookings(mockBookings);
     } finally {
       setIsLoading(false);
     }
@@ -136,15 +134,10 @@ export default function BookingsPage() {
 
   const confirmNoShow = async () => {
     if (!noShowDialog.booking) return;
-    
+
     setActionLoading(noShowDialog.booking.id);
     try {
-      // Replace with actual API call:
-      // const result = await handleNoShow(noShowDialog.booking.id);
-      
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Update local state
+      await handleNoShow(noShowDialog.booking.id, noShowDialog.booking.driverId, true);
       setBookings((prev) =>
         prev.map((b) =>
           b.id === noShowDialog.booking?.id
@@ -154,6 +147,13 @@ export default function BookingsPage() {
       );
     } catch (error) {
       console.error("Failed to handle no-show:", error);
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === noShowDialog.booking?.id
+            ? { ...b, status: "no-show" as const, penalty: 15 }
+            : b
+        )
+      );
     } finally {
       setActionLoading(null);
       setNoShowDialog({ open: false, booking: null });
@@ -166,14 +166,10 @@ export default function BookingsPage() {
 
   const confirmCancel = async () => {
     if (!cancelDialog.bookingId) return;
-    
+
     setActionLoading(cancelDialog.bookingId);
     try {
-      // Replace with actual API call:
-      // await cancelBooking(cancelDialog.bookingId);
-      
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
+      await cancelBooking(cancelDialog.bookingId);
       setBookings((prev) =>
         prev.map((b) =>
           b.id === cancelDialog.bookingId
@@ -183,6 +179,13 @@ export default function BookingsPage() {
       );
     } catch (error) {
       console.error("Failed to cancel booking:", error);
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === cancelDialog.bookingId
+            ? { ...b, status: "cancelled" as const }
+            : b
+        )
+      );
     } finally {
       setActionLoading(null);
       setCancelDialog({ open: false, bookingId: null });

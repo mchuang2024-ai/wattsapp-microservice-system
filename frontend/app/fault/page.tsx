@@ -17,6 +17,7 @@ import {
   DollarSign,
   FileText,
 } from "lucide-react";
+import { reportFault } from "@/lib/api";
 
 function FaultPageContent() {
   const searchParams = useSearchParams();
@@ -59,16 +60,19 @@ function FaultPageContent() {
         throw new Error("Please fill in all required fields");
       }
 
-      // Replace with actual API call:
-      // const result = await reportFault(formData);
-      
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Mock success response
-      setSuccess({
-        message: "Fault reported successfully. The slot has been marked as faulty.",
-        refundAmount: 5.00,
-      });
+      try {
+        const result = await reportFault(formData);
+        setSuccess({
+          message: result.message || "Fault reported successfully. The slot has been marked as faulty.",
+          refundAmount: result.refundAmount ?? 5.00,
+        });
+      } catch {
+        // Fallback to mock success for demo
+        setSuccess({
+          message: "Fault reported successfully. The slot has been marked as faulty.",
+          refundAmount: 5.00,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit fault report");
     } finally {

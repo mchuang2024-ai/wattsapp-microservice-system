@@ -204,7 +204,7 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const BASE_URL = '';
+    const REPORT_FAULT_URL = 'http://localhost:5010';
     let sessionActive = false;
     let recentFaults = [];
 
@@ -293,7 +293,7 @@
       };
 
       try {
-        const res = await fetch(`${BASE_URL}/reportfault`, {
+        const res = await fetch(`${REPORT_FAULT_URL}/reportfault`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify(payload),
@@ -343,7 +343,6 @@
       document.querySelectorAll('.field-error').forEach(e => e.style.display='none');
       document.getElementById('formError').classList.add('hidden');
       document.getElementById('charCount').textContent = '0 / 500';
-      setSeverity('medium');
       if(sessionActive) toggleSessionActive();
     }
 

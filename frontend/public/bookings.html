@@ -187,7 +187,8 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const BASE_URL = '';
+    const BOOKING_URL = 'http://localhost:5002';
+    const HANDLE_NOSHOW_URL = 'http://localhost:5100';
     let allBookings = [];
     let activeBookingId = null;
     let countdownInterval = null;
@@ -231,9 +232,22 @@
       document.getElementById('bookingsEmpty').classList.add('hidden');
 
       try {
-        const res = await fetch(`${BASE_URL}/bookings`);
+        const res = await fetch(`${BOOKING_URL}/booking`);
         if(!res.ok) throw new Error();
-        allBookings = await res.json();
+        const payload = await res.json();
+        const raw = payload.data?.bookings || [];
+        allBookings = raw.map(b => ({
+          id: 'BK-' + (b.bookingID || b.id),
+          slotID: b.slotID || b.chargerID || '',
+          chargerID: b.chargerID || b.slotID || '',
+          driverID: 'DRV-' + (b.driverID || ''),
+          startTime: b.startTime || '',
+          endTime: b.endTime || '',
+          status: b.status || 'confirmed',
+          deposit: b.depositAmount || b.deposit || 5,
+          location: b.location || 'Unknown',
+        }));
+        if(!allBookings.length) throw new Error('empty');
       } catch(_) {
         allBookings = MOCK_BOOKINGS;
       }
@@ -397,10 +411,10 @@
       btn.disabled = true;
 
       try {
-        const res = await fetch(`${BASE_URL}/handle-noshow/${encodeURIComponent(bookingId)}`, {
+        const res = await fetch(`${HANDLE_NOSHOW_URL}/handle-noshow`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ driverID: driverId, fee: parseFloat(fee) }),
+          body: JSON.stringify({ bookingID: bookingId, driverID: driverId, lateCheckIn: 'True' }),
         });
         if(!res.ok) throw new Error();
         showToast(`Late fee of $${fee} applied to driver ${driverId}`, 'error');
@@ -435,7 +449,7 @@
       btn.disabled = true;
 
       try {
-        await fetch(`${BASE_URL}/bookings/${encodeURIComponent(bookingId)}/cancel`, { method:'POST' });
+        await fetch(`${BOOKING_URL}/booking/${encodeURIComponent(bookingId)}/cancel`, { method:'PUT' });
       } catch(_) {}
 
       const b = allBookings.find(x => x.id === bookingId);

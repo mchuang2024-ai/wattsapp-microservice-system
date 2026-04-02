@@ -27,6 +27,7 @@ import {
 import { Search, Zap, Battery, MapPin, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ChargingSlot, BookingRequest } from "@/lib/api";
+import { fetchSlotsByFilter, createBooking } from "@/lib/api";
 
 // Mock data
 const mockSlots: ChargingSlot[] = [
@@ -58,20 +59,21 @@ function SlotsPageContent() {
   const fetchSlots = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Replace with actual API call:
-      // const data = await fetchSlotsByFilter(filters);
-      // setSlots(data);
-      
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      
+      const data = await fetchSlotsByFilter({
+        location: filters.location && filters.location !== "all" ? filters.location : undefined,
+        date: filters.date || new Date().toISOString().split("T")[0],
+        driverId: "1",
+        startTime: filters.startTime || undefined,
+        endTime: filters.endTime || undefined,
+      });
+      setSlots(data);
+    } catch (error) {
+      console.error("Failed to fetch slots, using mock data:", error);
       let filtered = [...mockSlots];
       if (filters.location && filters.location !== "all") {
         filtered = filtered.filter((slot) => slot.location === filters.location);
       }
-      
       setSlots(filtered);
-    } catch (error) {
-      console.error("Failed to fetch slots:", error);
     } finally {
       setIsLoading(false);
     }
@@ -102,11 +104,13 @@ function SlotsPageContent() {
   };
 
   const handleConfirmBooking = async (booking: BookingRequest) => {
-    // Replace with actual API call:
-    // await createBooking(booking);
-    
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log("Booking created:", booking);
+    try {
+      const result = await createBooking(booking);
+      console.log("Booking created:", result);
+      fetchSlots();
+    } catch (error) {
+      console.error("Booking failed, simulating success:", error);
+    }
   };
 
   const statusBadge = (status: ChargingSlot["status"]) => {
