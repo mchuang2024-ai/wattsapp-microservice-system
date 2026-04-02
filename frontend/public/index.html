@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV Charge Hub - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              DEFAULT: '#10d9a0',
+              dark:    '#0ba87a',
+              light:   '#6effd8',
+            },
+            accent: '#22d3ee',
+            surface: {
+              DEFAULT: '#0f1623',
+              card:    '#151f2e',
+              border:  '#1e2d40',
+            },
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { background-color: #0f1623; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+    .status-available  { background: rgba(16,217,160,0.15); color: #10d9a0; border: 1px solid rgba(16,217,160,0.3); }
+    .status-faulty     { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .status-occupied   { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+    .status-late       { background: rgba(251,146,60,0.15); color: #fb923c; border: 1px solid rgba(251,146,60,0.3); }
+    .card { background: #151f2e; border: 1px solid #1e2d40; border-radius: 0.75rem; }
+    .btn-primary { background: #10d9a0; color: #0f1623; font-weight: 600; border-radius: 0.5rem; padding: 0.5rem 1.25rem; transition: background 0.2s; cursor: pointer; }
+    .btn-primary:hover { background: #0ba87a; }
+    .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #1e2d40; border-radius: 0.5rem; padding: 0.5rem 1.25rem; transition: all 0.2s; cursor: pointer; }
+    .btn-ghost:hover { border-color: #10d9a0; color: #10d9a0; }
+    .input-field { background: #0f1623; border: 1px solid #1e2d40; border-radius: 0.5rem; color: #e2e8f0; padding: 0.5rem 0.75rem; width: 100%; transition: border-color 0.2s; }
+    .input-field:focus { outline: none; border-color: #10d9a0; }
+    .input-field option { background: #151f2e; }
+    .pulse-dot { width: 8px; height: 8px; background: #10d9a0; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+    .spinner { border: 3px solid #1e2d40; border-top-color: #10d9a0; border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; padding: 0.875rem 1.25rem; border-radius: 0.625rem; font-size: 0.875rem; font-weight: 500; min-width: 260px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); transform: translateY(100px); opacity: 0; transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: rgba(16,217,160,0.15); color: #10d9a0; border: 1px solid rgba(16,217,160,0.3); }
+    .toast.error   { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .toast.info    { background: rgba(34,211,238,0.15); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
+    .nav-link { color: #94a3b8; padding: 0.5rem 0.875rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; transition: all 0.2s; text-decoration: none; }
+    .nav-link:hover, .nav-link.active { color: #10d9a0; background: rgba(16,217,160,0.1); }
+    .range-slider { -webkit-appearance: none; width: 100%; height: 4px; background: #1e2d40; border-radius: 2px; outline: none; }
+    .range-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #10d9a0; cursor: pointer; }
+    .range-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #10d9a0; cursor: pointer; border: none; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Nav -->
+  <header style="background:#0d1520; border-bottom:1px solid #1e2d40;" class="sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span class="text-lg font-bold text-white">EV Charge Hub</span>
+      </div>
+      <nav class="hidden sm:flex items-center gap-1">
+        <a href="index.html" class="nav-link active">Dashboard</a>
+        <a href="slots.html"    class="nav-link">Find Slots</a>
+        <a href="bookings.html" class="nav-link">My Bookings</a>
+        <a href="fault.html"    class="nav-link">Report Fault</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <div class="pulse-dot"></div>
+        <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
+        <button id="refreshBtn" onclick="loadDashboard()" class="btn-ghost text-sm ml-2">Refresh</button>
+      </div>
+    </div>
+    <!-- Mobile nav -->
+    <div class="sm:hidden flex gap-1 px-4 pb-2 overflow-x-auto">
+      <a href="index.html"    class="nav-link active whitespace-nowrap">Dashboard</a>
+      <a href="slots.html"    class="nav-link whitespace-nowrap">Find Slots</a>
+      <a href="bookings.html" class="nav-link whitespace-nowrap">My Bookings</a>
+      <a href="fault.html"    class="nav-link whitespace-nowrap">Report Fault</a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Page heading -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Charging Station Dashboard</h1>
+        <p class="text-slate-400 text-sm mt-1">Live overview of all EV charging stations</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-slate-500">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Auto-refreshes every 30s &nbsp;|&nbsp; <span id="lastUpdated">--</span>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8" id="statsRow">
+      <div class="card p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Total Stations</p>
+        <p class="text-2xl font-bold text-white" id="statTotal">--</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Available</p>
+        <p class="text-2xl font-bold" style="color:#10d9a0" id="statAvail">--</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Occupied</p>
+        <p class="text-2xl font-bold" style="color:#fb923c" id="statOcc">--</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Faulty</p>
+        <p class="text-2xl font-bold" style="color:#f87171" id="statFaulty">--</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card p-5 mb-8">
+      <h2 class="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Filter Stations</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Status</label>
+          <select id="filterStatus" class="input-field text-sm">
+            <option value="">All Statuses</option>
+            <option value="available">Available</option>
+            <option value="occupied">Occupied</option>
+            <option value="faulty">Faulty</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Max Deposit: $<span id="priceLabel">20</span></label>
+          <input type="range" min="5" max="50" value="20" step="5" id="filterPrice" class="range-slider mt-2" oninput="document.getElementById('priceLabel').textContent=this.value" />
+        </div>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button class="btn-primary text-sm" onclick="applyFilters()">Apply Filters</button>
+        <button class="btn-ghost text-sm" onclick="clearFilters()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Station grid -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-white">Charging Stations <span class="text-slate-500 text-sm font-normal" id="slotCount"></span></h2>
+      <div class="flex gap-2">
+        <button onclick="setView('grid')" id="viewGrid" class="btn-ghost text-xs px-3 py-2" style="border-color:#10d9a0;color:#10d9a0">Grid</button>
+        <button onclick="setView('list')" id="viewList" class="btn-ghost text-xs px-3 py-2">List</button>
+      </div>
+    </div>
+
+    <div id="stationsLoader" class="flex justify-center py-16 hidden">
+      <div class="spinner"></div>
+    </div>
+    <div id="stationsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    <div id="stationsEmpty" class="hidden text-center py-16 text-slate-500">
+      <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      No stations match your filters.
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const BASE_URL = '';
+    let allStations = [];
+    let currentView = 'grid';
+    let autoRefreshTimer;
+
+    const MOCK_STATIONS = [
+      { id:'SLT-001', location:'North Hub', type:'fast',  status:'available', deposit:5,  power:'50kW',  spots:4 },
+      { id:'SLT-002', location:'South Hub', type:'slow',  status:'available', deposit:5,  power:'22kW',  spots:8 },
+      { id:'SLT-003', location:'East Hub',  type:'fast',  status:'occupied',  deposit:5,  power:'100kW', spots:2 },
+      { id:'SLT-004', location:'West Hub',  type:'slow',  status:'faulty',    deposit:5,  power:'11kW',  spots:6 },
+      { id:'SLT-005', location:'Central Hub',type:'fast', status:'available', deposit:5,  power:'150kW', spots:3 },
+      { id:'SLT-006', location:'North Hub', type:'slow',  status:'available', deposit:5,  power:'7kW',   spots:10},
+      { id:'SLT-007', location:'South Hub', type:'fast',  status:'occupied',  deposit:5,  power:'50kW',  spots:4 },
+      { id:'SLT-008', location:'East Hub',  type:'slow',  status:'available', deposit:5,  power:'22kW',  spots:5 },
+      { id:'SLT-009', location:'Central Hub',type:'fast', status:'faulty',    deposit:5,  power:'75kW',  spots:2 },
+    ];
+
+    function showToast(msg, type='info') {
+      const t = document.getElementById('toast');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    function setView(v) {
+      currentView = v;
+      document.getElementById('viewGrid').style.borderColor = v==='grid' ? '#10d9a0' : '#1e2d40';
+      document.getElementById('viewGrid').style.color       = v==='grid' ? '#10d9a0' : '#94a3b8';
+      document.getElementById('viewList').style.borderColor = v==='list' ? '#10d9a0' : '#1e2d40';
+      document.getElementById('viewList').style.color       = v==='list' ? '#10d9a0' : '#94a3b8';
+      const grid = document.getElementById('stationsGrid');
+      if(v==='grid') {
+        grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5';
+      } else {
+        grid.className = 'flex flex-col gap-3';
+      }
+    }
+
+    async function fetchStations() {
+      try {
+        const res = await fetch(`${BASE_URL}/slots?status=available`);
+        if(!res.ok) throw new Error('API error');
+        return await res.json();
+      } catch(_) {
+        return MOCK_STATIONS;
+      }
+    }
+
+    async function loadDashboard() {
+      document.getElementById('stationsLoader').classList.remove('hidden');
+      document.getElementById('stationsGrid').innerHTML = '';
+      document.getElementById('stationsEmpty').classList.add('hidden');
+
+      const data = await fetchStations();
+      allStations = data.length ? data : MOCK_STATIONS;
+
+      updateStats(allStations);
+      renderStations(allStations);
+      document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+      document.getElementById('stationsLoader').classList.add('hidden');
+    }
+
+    function updateStats(stations) {
+      document.getElementById('statTotal').textContent  = stations.length;
+      document.getElementById('statAvail').textContent  = stations.filter(s=>s.status==='available').length;
+      document.getElementById('statOcc').textContent    = stations.filter(s=>s.status==='occupied').length;
+      document.getElementById('statFaulty').textContent = stations.filter(s=>s.status==='faulty').length;
+    }
+
+    function statusClass(s) {
+      if(s==='available') return 'status-available';
+      if(s==='faulty')    return 'status-faulty';
+      return 'status-occupied';
+    }
+
+    function typeIcon(t) {
+      if(t==='fast') return `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+      return `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6H5a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h13l4-3.5L18 6z"/><path d="M12 12v5"/><path d="M9 17h6"/></svg>`;
+    }
+
+    function renderStations(list) {
+      const grid = document.getElementById('stationsGrid');
+      const empty = document.getElementById('stationsEmpty');
+      document.getElementById('slotCount').textContent = `(${list.length})`;
+
+      if(!list.length) { empty.classList.remove('hidden'); return; }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = list.map(s => `
+        <div class="card p-5 flex flex-col gap-3 hover:border-brand transition-colors duration-200" style="transition:border-color 0.2s">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs text-slate-500 mb-0.5">Station ID</p>
+              <p class="font-bold text-white">${s.id}</p>
+            </div>
+            <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${statusClass(s.status)}">${s.status.charAt(0).toUpperCase()+s.status.slice(1)}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-sm">
+            <div style="background:#0f1623;border-radius:0.5rem;padding:0.5rem 0.75rem">
+              <p class="text-xs text-slate-500 mb-0.5">Deposit</p>
+              <p class="text-slate-200 text-xs font-medium">$${s.deposit || 5}</p>
+            </div>
+            <div style="background:#0f1623;border-radius:0.5rem;padding:0.5rem 0.75rem">
+              <p class="text-xs text-slate-500 mb-0.5">Spots</p>
+              <p class="text-slate-200 text-xs font-medium">${s.spots || '--'}</p>
+            </div>
+          </div>
+          <a href="slots.html?location=${encodeURIComponent(s.location)}&stationId=${s.id}" class="btn-primary text-sm text-center mt-auto ${s.status==='faulty'?'opacity-40 pointer-events-none':''}">
+            View Slots
+          </a>
+        </div>
+      `).join('');
+    }
+
+    function applyFilters() {
+      const status = document.getElementById('filterStatus').value.toLowerCase();
+
+      const filtered = allStations.filter(s => {
+        if(status && s.status !== status) return false;
+        return true;
+      });
+
+      renderStations(filtered);
+    }
+
+    function clearFilters() {
+      document.getElementById('filterStatus').value = '';
+      renderStations(allStations);
+    }
+
+    function startAutoRefresh() {
+      autoRefreshTimer = setInterval(loadDashboard, 30000);
+    }
+
+    loadDashboard();
+    startAutoRefresh();
+  </script>
+</body>
+</html>

@@ -165,12 +165,12 @@ services:
   make-booking:
     build:
       context: .
-      dockerfile: Make_booking/Dockerfile
+      dockerfile: Make_Booking/Dockerfile
     image: wattsapp/make-booking
     container_name: make-booking
     environment:
-      - PAYMENT_URL=http://payment:5002/payment/hold
-      - BOOKING_URL=http://booking:5003/bookings
+      - PAYMENT_URL=http://payment:5003/payment/hold
+      - BOOKING_URL=http://booking:5002/booking
       - RABBITMQ_URL=amqp://admin:password123@rabbitmq:5672/%2F
     ports:
       - "5011:5011"
@@ -178,6 +178,26 @@ services:
       - payment
       - booking
       - rabbitmq
+    networks:
+      - esd-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: wattsapp/frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://make-booking:5011
+      - NEXT_PUBLIC_BOOKING_URL=http://booking:5002
+      - NEXT_PUBLIC_DRIVER_URL=http://driver:5001
+      - NEXT_PUBLIC_VIEW_SLOTS_URL=http://view-slots:5006
+      - NEXT_PUBLIC_HANDLE_NOSHOW_URL=http://handle-No-Show:5100
+      - NEXT_PUBLIC_REPORT_FAULT_URL=http://report-fault:5010
+    depends_on:
+      - make-booking
     networks:
       - esd-network
 volumes:

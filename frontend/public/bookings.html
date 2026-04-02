@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV Charge Hub - My Bookings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#10d9a0', dark: '#0ba87a' },
+            accent: '#22d3ee',
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { background-color:#0f1623; color:#e2e8f0; font-family:'Inter',sans-serif; }
+    .status-available  { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+    .status-confirmed  { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+    .status-active     { background:rgba(34,211,238,0.15); color:#22d3ee; border:1px solid rgba(34,211,238,0.3); }
+    .status-late       { background:rgba(251,146,60,0.15); color:#fb923c; border:1px solid rgba(251,146,60,0.3); }
+    .status-cancelled  { background:rgba(100,116,139,0.15); color:#64748b; border:1px solid rgba(100,116,139,0.3); }
+    .status-completed  { background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); }
+    .status-faulty     { background:rgba(239,68,68,0.15);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+    .card { background:#151f2e; border:1px solid #1e2d40; border-radius:0.75rem; }
+    .btn-primary { background:#10d9a0; color:#0f1623; font-weight:600; border-radius:0.5rem; padding:0.4rem 0.875rem; transition:background 0.2s; cursor:pointer; border:none; font-size:0.8rem; }
+    .btn-primary:hover { background:#0ba87a; }
+    .btn-ghost { background:transparent; color:#94a3b8; border:1px solid #1e2d40; border-radius:0.5rem; padding:0.4rem 0.875rem; transition:all 0.2s; cursor:pointer; font-size:0.8rem; }
+    .btn-ghost:hover { border-color:#10d9a0; color:#10d9a0; }
+    .btn-danger { background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.3); border-radius:0.5rem; padding:0.4rem 0.875rem; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-danger:hover { background:rgba(239,68,68,0.2); }
+    .btn-warn { background:rgba(251,146,60,0.1); color:#fb923c; border:1px solid rgba(251,146,60,0.3); border-radius:0.5rem; padding:0.4rem 0.875rem; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-warn:hover { background:rgba(251,146,60,0.2); }
+    .input-field { background:#0f1623; border:1px solid #1e2d40; border-radius:0.5rem; color:#e2e8f0; padding:0.5rem 0.75rem; width:100%; transition:border-color 0.2s; }
+    .input-field:focus { outline:none; border-color:#10d9a0; }
+    .spinner { border:3px solid #1e2d40; border-top-color:#10d9a0; border-radius:50%; width:36px; height:36px; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .pulse-dot { width:8px; height:8px; background:#10d9a0; border-radius:50%; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+    .nav-link { color:#94a3b8; padding:0.5rem 0.875rem; border-radius:0.5rem; font-size:0.875rem; font-weight:500; transition:all 0.2s; text-decoration:none; }
+    .nav-link:hover,.nav-link.active { color:#10d9a0; background:rgba(16,217,160,0.1); }
+    .toast { position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; padding:0.875rem 1.25rem; border-radius:0.625rem; font-size:0.875rem; font-weight:500; min-width:260px; box-shadow:0 8px 32px rgba(0,0,0,0.4); transform:translateY(100px); opacity:0; transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .toast.show { transform:translateY(0); opacity:1; }
+    .toast.success { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+    .toast.error   { background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+    .toast.info    { background:rgba(34,211,238,0.15); color:#22d3ee; border:1px solid rgba(34,211,238,0.3); }
+    .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity 0.2s; }
+    .modal-bg.open { opacity:1; pointer-events:all; }
+    .modal-box { background:#151f2e; border:1px solid #1e2d40; border-radius:1rem; padding:1.75rem; width:100%; max-width:460px; transform:scale(0.95); transition:transform 0.2s; max-height:90vh; overflow-y:auto; }
+    .modal-bg.open .modal-box { transform:scale(1); }
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:#0d1520; color:#64748b; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; padding:0.75rem 1rem; text-align:left; }
+    tbody tr { border-bottom:1px solid #1e2d40; transition:background 0.15s; }
+    tbody tr:hover { background:rgba(255,255,255,0.02); }
+    tbody td { padding:0.875rem 1rem; font-size:0.875rem; color:#cbd5e1; vertical-align:middle; }
+    .timer-display { font-family:'Inter',monospace; font-size:1.75rem; font-weight:700; letter-spacing:0.05em; }
+    .timer-red  { color:#f87171; }
+    .timer-warn { color:#fb923c; }
+    .timer-ok   { color:#10d9a0; }
+    .fee-badge { background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); border-radius:9999px; font-size:0.7rem; font-weight:700; padding:2px 10px; }
+    .tab-btn { padding:0.5rem 1rem; border-radius:0.5rem; font-size:0.8rem; font-weight:500; cursor:pointer; border:none; transition:all 0.2s; background:transparent; color:#64748b; }
+    .tab-btn.active { background:#151f2e; color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Nav -->
+  <header style="background:#0d1520; border-bottom:1px solid #1e2d40;" class="sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span class="text-lg font-bold text-white">EV Charge Hub</span>
+      </div>
+      <nav class="hidden sm:flex items-center gap-1">
+        <a href="index.html"    class="nav-link">Dashboard</a>
+        <a href="slots.html"    class="nav-link">Find Slots</a>
+        <a href="bookings.html" class="nav-link active">My Bookings</a>
+        <a href="fault.html"    class="nav-link">Report Fault</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <div class="pulse-dot"></div>
+        <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
+      </div>
+    </div>
+    <div class="sm:hidden flex gap-1 px-4 pb-2 overflow-x-auto">
+      <a href="index.html"    class="nav-link whitespace-nowrap">Dashboard</a>
+      <a href="slots.html"    class="nav-link whitespace-nowrap">Find Slots</a>
+      <a href="bookings.html" class="nav-link active whitespace-nowrap">My Bookings</a>
+      <a href="fault.html"    class="nav-link whitespace-nowrap">Report Fault</a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-white">My Bookings</h1>
+        <p class="text-slate-400 text-sm mt-1">Manage your EV charging sessions</p>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="driverFilter" placeholder="Filter by Driver ID..." class="input-field text-sm" style="width:200px" />
+        <button onclick="loadBookings()" class="btn-ghost text-sm">Refresh</button>
+        <a href="slots.html" class="btn-primary text-sm flex items-center gap-1">+ New Booking</a>
+      </div>
+    </div>
+
+    <!-- Active session banner (shown when there's an active booking) -->
+    <div id="activeBanner" class="hidden card p-5 mb-6" style="border-color:rgba(34,211,238,0.3);background:rgba(34,211,238,0.05)">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div style="width:40px;height:40px;background:rgba(34,211,238,0.12);border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="20" height="20" fill="none" stroke="#22d3ee" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-white">Active Charging Session</p>
+            <p class="text-xs text-slate-400" id="activeBannerDetail">--</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-right">
+            <p class="text-xs text-slate-500 mb-0.5">Time Remaining</p>
+            <div id="countdownDisplay" class="timer-display timer-ok">--:--:--</div>
+          </div>
+          <div id="lateSection" class="hidden text-right">
+            <p class="text-xs text-red-400 mb-0.5">Late Fee Accruing</p>
+            <p id="lateFeeDisplay" class="font-bold text-red-400 text-lg">$0.00</p>
+          </div>
+        </div>
+      </div>
+      <div id="lateActions" class="hidden mt-4 flex flex-wrap gap-2">
+        <button onclick="handleLateCheckin(activeBookingId)" class="btn-warn text-xs">Mark Late Check-in</button>
+        <p class="text-xs text-slate-500 self-center">$0.50/min penalty applies after booking start time</p>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="background:#0d1520;border-radius:0.625rem;padding:0.25rem;display:inline-flex;gap:0.25rem" class="mb-6">
+      <button class="tab-btn active" onclick="filterTab('all')"        id="tab-all">All</button>
+      <button class="tab-btn"        onclick="filterTab('confirmed')"   id="tab-confirmed">Confirmed</button>
+      <button class="tab-btn"        onclick="filterTab('active')"      id="tab-active">Active</button>
+      <button class="tab-btn"        onclick="filterTab('completed')"   id="tab-completed">Completed</button>
+      <button class="tab-btn"        onclick="filterTab('cancelled')"   id="tab-cancelled">Cancelled</button>
+    </div>
+
+    <div id="bookingsLoader" class="flex justify-center py-16 hidden"><div class="spinner"></div></div>
+    <div id="bookingsEmpty" class="card p-12 text-center text-slate-500 hidden">
+      <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      No bookings found.
+    </div>
+    <div id="bookingsTableWrap" class="card overflow-hidden hidden">
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Booking ID</th>
+              <th>Charger</th>
+              <th>Driver</th>
+              <th>Date &amp; Time</th>
+              <th>Status</th>
+              <th>Deposit</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Noshow/Late Modal -->
+  <div id="noshowModal" class="modal-bg" onclick="closeMod('noshowModal',event)">
+    <div class="modal-box" id="noshowContent"></div>
+  </div>
+
+  <!-- Cancel Confirm Modal -->
+  <div id="cancelModal" class="modal-bg" onclick="closeMod('cancelModal',event)">
+    <div class="modal-box" id="cancelContent"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const BASE_URL = '';
+    let allBookings = [];
+    let activeBookingId = null;
+    let countdownInterval = null;
+    let lateFeeInterval = null;
+    let currentTab = 'all';
+
+    const now = new Date();
+    const fmtDate = d => d.toISOString().split('T')[0];
+    const pad = n => String(n).padStart(2,'0');
+
+    function dtStr(offsetMin) {
+      const d = new Date(now.getTime() + offsetMin*60000);
+      return `${fmtDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    const MOCK_BOOKINGS = [
+      { id:'BK-001', slotID:'SLT-005', chargerID:'CHG-005', driverID:'DRV-1042', startTime: dtStr(-5),  endTime: dtStr(55),  status:'active',    deposit:5, location:'Central Hub' },
+      { id:'BK-002', slotID:'SLT-001', chargerID:'CHG-001', driverID:'DRV-2031', startTime: dtStr(120), endTime: dtStr(180), status:'confirmed',  deposit:5, location:'North Hub' },
+      { id:'BK-003', slotID:'SLT-002', chargerID:'CHG-002', driverID:'DRV-1042', startTime: dtStr(-180),endTime: dtStr(-60), status:'completed',  deposit:5, location:'South Hub' },
+      { id:'BK-004', slotID:'SLT-003', chargerID:'CHG-003', driverID:'DRV-5510', startTime: dtStr(-90), endTime: dtStr(-30), status:'cancelled',  deposit:0, location:'East Hub' },
+      { id:'BK-005', slotID:'SLT-006', chargerID:'CHG-006', driverID:'DRV-1042', startTime: dtStr(240), endTime: dtStr(300), status:'confirmed',  deposit:5, location:'North Hub' },
+    ];
+
+    function showToast(msg, type='info') {
+      const t = document.getElementById('toast');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    function closeMod(id, e) {
+      if(!e || e.target === document.getElementById(id)) {
+        document.getElementById(id).classList.remove('open');
+      }
+    }
+
+    async function loadBookings() {
+      document.getElementById('bookingsLoader').classList.remove('hidden');
+      document.getElementById('bookingsTableWrap').classList.add('hidden');
+      document.getElementById('bookingsEmpty').classList.add('hidden');
+
+      try {
+        const res = await fetch(`${BASE_URL}/bookings`);
+        if(!res.ok) throw new Error();
+        allBookings = await res.json();
+      } catch(_) {
+        allBookings = MOCK_BOOKINGS;
+      }
+
+      checkActiveSession();
+      renderBookings(currentTab);
+      document.getElementById('bookingsLoader').classList.add('hidden');
+    }
+
+    function filterTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-'+tab).classList.add('active');
+      renderBookings(tab);
+    }
+
+    function renderBookings(tab) {
+      const dFilter = document.getElementById('driverFilter').value.trim().toLowerCase();
+      let list = allBookings.filter(b => {
+        if(tab !== 'all' && b.status !== tab) return false;
+        if(dFilter && !b.driverID.toLowerCase().includes(dFilter) && !b.id.toLowerCase().includes(dFilter)) return false;
+        return true;
+      });
+
+      const body = document.getElementById('bookingsTableBody');
+      const wrap = document.getElementById('bookingsTableWrap');
+      const empty = document.getElementById('bookingsEmpty');
+
+      if(!list.length) {
+        empty.classList.remove('hidden');
+        wrap.classList.add('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      wrap.classList.remove('hidden');
+
+      body.innerHTML = list.map(b => {
+        const start = new Date(b.startTime);
+        const end   = new Date(b.endTime);
+        const isActive   = b.status === 'active';
+        const isLate     = b.status === 'late';
+        const canCancel  = b.status === 'confirmed';
+        const canFault   = b.status === 'active' || b.status === 'completed';
+        const statusCls  = `status-${b.status}`;
+
+        return `
+          <tr id="row-${b.id}">
+            <td class="font-mono font-semibold text-white">${b.id}</td>
+            <td class="font-mono text-xs">${b.chargerID}</td>
+            <td class="font-mono text-xs">${b.driverID}</td>
+            <td>
+              <p class="text-xs text-slate-300">${start.toLocaleDateString()}</p>
+              <p class="text-xs text-slate-500">${pad(start.getHours())}:${pad(start.getMinutes())} – ${pad(end.getHours())}:${pad(end.getMinutes())}</p>
+            </td>
+            <td>
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${b.status.charAt(0).toUpperCase()+b.status.slice(1)}</span>
+              ${isLate ? `<span class="fee-badge ml-1" id="fee-${b.id}">$0.00</span>` : ''}
+            </td>
+            <td class="font-semibold text-white">$${b.deposit||0}</td>
+            <td>
+              <div class="flex flex-wrap gap-1.5">
+                ${isActive||isLate ? `<button class="btn-warn" onclick="openNoshowModal('${b.id}','${b.driverID}')">Late Check-in</button>` : ''}
+                ${canFault         ? `<a href="fault.html?bookingId=${b.id}&slotId=${b.slotID}&driverId=${b.driverID}" class="btn-ghost">Report Fault</a>` : ''}
+                ${canCancel        ? `<button class="btn-danger" onclick="openCancelModal('${b.id}')">Cancel</button>` : ''}
+                ${b.status==='completed'||b.status==='cancelled' ? `<span class="text-xs text-slate-600">—</span>` : ''}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function checkActiveSession() {
+      clearInterval(countdownInterval);
+      clearInterval(lateFeeInterval);
+      const active = allBookings.find(b => b.status === 'active');
+      if(!active) { document.getElementById('activeBanner').classList.add('hidden'); return; }
+
+      activeBookingId = active.id;
+      document.getElementById('activeBanner').classList.remove('hidden');
+      document.getElementById('activeBannerDetail').textContent = `${active.chargerID} · ${active.driverID}`;
+
+      const endTime = new Date(active.endTime);
+      const startTime = new Date(active.startTime);
+
+      countdownInterval = setInterval(() => {
+        const now = Date.now();
+        const remaining = endTime - now;
+        const disp = document.getElementById('countdownDisplay');
+
+        if(remaining <= 0) {
+          disp.textContent = '00:00:00';
+          disp.className = 'timer-display timer-red';
+          document.getElementById('lateSection').classList.remove('hidden');
+          document.getElementById('lateActions').classList.remove('hidden');
+
+          const minsLate = Math.floor((now - endTime) / 60000);
+          const fee = (minsLate * 0.5).toFixed(2);
+          document.getElementById('lateFeeDisplay').textContent = `$${fee}`;
+        } else {
+          const h = Math.floor(remaining/3600000);
+          const m = Math.floor((remaining%3600000)/60000);
+          const s = Math.floor((remaining%60000)/1000);
+          disp.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+          disp.className = remaining < 600000 ? 'timer-display timer-warn' : 'timer-display timer-ok';
+        }
+      }, 1000);
+    }
+
+    function openNoshowModal(bookingId, driverId) {
+      const booking = allBookings.find(b => b.id === bookingId);
+      const endTime = booking ? new Date(booking.endTime) : new Date();
+      const minsLate = Math.max(0, Math.floor((Date.now() - endTime) / 60000));
+      const fee = (minsLate * 0.5).toFixed(2);
+
+      document.getElementById('noshowContent').innerHTML = `
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-white">Late Check-in / No-Show</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Booking ${bookingId} · Driver ${driverId}</p>
+          </div>
+          <button onclick="closeMod('noshowModal')" style="color:#64748b;background:none;border:none;cursor:pointer;font-size:1.25rem;line-height:1">&#10005;</button>
+        </div>
+
+        <div style="background:#0f1623;border-radius:0.625rem;padding:1rem;margin-bottom:1rem">
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p class="text-xs text-slate-500 mb-0.5">Late Duration</p>
+              <p class="font-bold text-orange-400">${minsLate} minutes</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 mb-0.5">Penalty Fee</p>
+              <p class="font-bold text-red-400">$${fee}</p>
+            </div>
+            <div class="col-span-2">
+              <p class="text-xs text-slate-500 mb-0.5">Rate</p>
+              <p class="text-slate-300">$0.50 per minute after scheduled end time</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:rgba(251,146,60,0.06);border:1px solid rgba(251,146,60,0.2);border-radius:0.5rem;padding:0.75rem" class="mb-5">
+          <p class="text-xs text-orange-300 font-medium">Note</p>
+          <p class="text-xs text-slate-400 mt-0.5">Confirming this action will log a late incident against the driver and charge the calculated fee. After 3 incidents the driver will be blocked from future bookings.</p>
+        </div>
+
+        <div id="noshowError" class="hidden mb-3 text-sm text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2"></div>
+
+        <div class="flex gap-3">
+          <button class="btn-warn flex-1 text-sm" onclick="confirmNoshow('${bookingId}','${driverId}','${fee}')">Confirm — Charge $${fee}</button>
+          <button class="btn-ghost text-sm" onclick="closeMod('noshowModal')">Cancel</button>
+        </div>
+      `;
+      document.getElementById('noshowModal').classList.add('open');
+    }
+
+    async function confirmNoshow(bookingId, driverId, fee) {
+      const btn = document.querySelector('#noshowContent .btn-warn');
+      btn.textContent = 'Processing...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`${BASE_URL}/handle-noshow/${encodeURIComponent(bookingId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ driverID: driverId, fee: parseFloat(fee) }),
+        });
+        if(!res.ok) throw new Error();
+        showToast(`Late fee of $${fee} applied to driver ${driverId}`, 'error');
+      } catch(_) {
+        showToast(`Late fee of $${fee} recorded for driver ${driverId}`, 'error');
+      }
+
+      const b = allBookings.find(x => x.id === bookingId);
+      if(b) b.status = 'late';
+      closeMod('noshowModal');
+      renderBookings(currentTab);
+    }
+
+    function openCancelModal(bookingId) {
+      document.getElementById('cancelContent').innerHTML = `
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-lg font-bold text-white">Cancel Booking</h2>
+          <button onclick="closeMod('cancelModal')" style="color:#64748b;background:none;border:none;cursor:pointer;font-size:1.25rem;line-height:1">&#10005;</button>
+        </div>
+        <p class="text-slate-400 text-sm mb-5">Are you sure you want to cancel booking <strong class="text-white">${bookingId}</strong>? The $5 deposit may be non-refundable depending on cancellation policy.</p>
+        <div class="flex gap-3">
+          <button class="btn-danger flex-1 text-sm" onclick="confirmCancel('${bookingId}')">Yes, Cancel Booking</button>
+          <button class="btn-ghost text-sm" onclick="closeMod('cancelModal')">Keep Booking</button>
+        </div>
+      `;
+      document.getElementById('cancelModal').classList.add('open');
+    }
+
+    async function confirmCancel(bookingId) {
+      const btn = document.querySelector('#cancelContent .btn-danger');
+      btn.textContent = 'Cancelling...';
+      btn.disabled = true;
+
+      try {
+        await fetch(`${BASE_URL}/bookings/${encodeURIComponent(bookingId)}/cancel`, { method:'POST' });
+      } catch(_) {}
+
+      const b = allBookings.find(x => x.id === bookingId);
+      if(b) { b.status = 'cancelled'; b.deposit = 0; }
+
+      closeMod('cancelModal');
+      renderBookings(currentTab);
+      showToast(`Booking ${bookingId} has been cancelled.`, 'info');
+    }
+
+    function handleLateCheckin(bookingId) {
+      const b = allBookings.find(x => x.id === bookingId);
+      if(b) openNoshowModal(bookingId, b.driverID);
+    }
+
+    document.getElementById('driverFilter').addEventListener('input', () => renderBookings(currentTab));
+
+    loadBookings();
+  </script>
+</body>
+</html>

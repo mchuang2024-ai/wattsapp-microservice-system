@@ -63,7 +63,7 @@ def create_booking():
             json={'driverID': driver_id, 'deposit': deposit},
             timeout=10
         )
-        if payment_resp.status_code != 200:
+        if payment_resp.status_code not in (200, 201):
             print("Payment authorization failed", payment_resp.text)
             return jsonify({'error': 'Payment authorization failed'}), 500
     except Exception as e:
@@ -76,9 +76,9 @@ def create_booking():
             config.BOOKING_URL,
             json={
                 'driverID': driver_id,
-                'chargerID': charger_id,
-                'starttime': starttime,
-                'endtime': endtime
+                'slotID': charger_id,
+                'startTime': starttime,
+                'endTime': endtime
             },
             timeout=10
         )
