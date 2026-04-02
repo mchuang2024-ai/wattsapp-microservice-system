@@ -106,7 +106,7 @@ def penaltyPayment():
     bookingID = request.json.get('bookingID', None)
     driverID = request.json.get('driverID', None)
     
-    payment = Payment(bookingID=bookingID, driverID=driverID, type='forfeit')
+    payment = Payment(bookingID=bookingID, driverID=driverID, amount=5.0, type='forfeit')
 
     try:
         db.session.add(payment)
