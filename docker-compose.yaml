@@ -74,6 +74,7 @@ services:
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/notification
       - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
       - RABBITMQ_USER=admin
       - RABBITMQ_PASS=password123
     networks:
@@ -125,6 +126,7 @@ services:
       - NOTIFICATION_URL=http://notification:5004
       - STATUS_URL=https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status
       - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
       - RABBITMQ_USER=admin
       - RABBITMQ_PASS=password123
     networks:

@@ -50,6 +50,10 @@ class Bookings(db.Model):
             "depositAmount": self.depositAmount,
         }
 
+with app.app_context():
+    db.create_all()
+    print("Booking database tables created successfully.")
+
 # get all bookings
 @app.route("/booking")
 def get_all_bookings():
