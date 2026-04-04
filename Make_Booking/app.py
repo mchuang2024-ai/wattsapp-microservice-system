@@ -77,15 +77,16 @@ def create_booking():
     try:
         payment_resp = requests.post(
             config.PAYMENT_URL,
-            json={'driverID': driver_id, 'bookingID': 0, 'amount': deposit},
+            json={'driverID': int(driver_id), 'bookingID': 0, 'amount': float(deposit)},
             timeout=10
         )
         if payment_resp.status_code not in (200, 201):
-            print("Payment authorization failed", payment_resp.text)
-            return jsonify({'error': 'Payment authorization failed'}), 500
+            err_body = payment_resp.text
+            print(f"Payment authorization failed [{payment_resp.status_code}]: {err_body}")
+            return jsonify({'error': f'Payment authorization failed ({payment_resp.status_code})', 'detail': err_body}), 500
     except Exception as e:
         print(f"Payment service error: {e}")
-        return jsonify({'error': 'Payment authorization failed', 'details': str(e)}), 500
+        return jsonify({'error': 'Payment service unreachable', 'details': str(e)}), 500
 
     # 3. Booking creation
     try:

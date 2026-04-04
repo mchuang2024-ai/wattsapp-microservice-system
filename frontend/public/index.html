@@ -250,22 +250,7 @@
           }));
         }
 
-        // Add faulty-only stations (from maintenance tickets that don't appear in view-slots anymore)
-        for (const slotId of faultyIds) {
-          if (!availableStations.find(s => String(s.id) === slotId)) {
-            availableStations.push({
-              id: slotId,
-              location: `Charger ${slotId}`,
-              type: 'fast',
-              status: 'faulty',
-              deposit: 5,
-              power: '--',
-              spots: '--',
-            });
-          }
-        }
-
-        if (!availableStations.length && !faultyIds.size) return MOCK_STATIONS;
+        if (!availableStations.length) return MOCK_STATIONS;
         return availableStations;
       } catch(_) {
         return MOCK_STATIONS;
