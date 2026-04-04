@@ -241,8 +241,9 @@
           slotID: b.slotID || b.chargerID || '',
           chargerID: b.chargerID || b.slotID || '',
           driverID: 'DRV-' + (b.driverID || ''),
-          startTime: b.startTime || '',
-          endTime: b.endTime || '',
+          // Replace space with T so new Date() parses correctly in all browsers
+          startTime: (b.startTime || '').replace(' ', 'T'),
+          endTime: (b.endTime || '').replace(' ', 'T'),
           status: b.status || 'confirmed',
           deposit: b.depositAmount || b.deposit || 5,
           location: b.location || 'Unknown',
@@ -410,11 +411,15 @@
       btn.textContent = 'Processing...';
       btn.disabled = true;
 
+      // Strip display prefixes to get raw integer IDs for the API
+      const rawBookingId = parseInt(bookingId.replace('BK-', ''));
+      const rawDriverId  = parseInt(driverId.replace('DRV-', ''));
+
       try {
         const res = await fetch(`${HANDLE_NOSHOW_URL}/handle-noshow`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingID: bookingId, driverID: driverId, lateCheckIn: 'True' }),
+          body: JSON.stringify({ bookingID: rawBookingId, driverID: rawDriverId, lateCheckIn: true }),
         });
         if(!res.ok) throw new Error();
         showToast(`Late fee of $${fee} applied to driver ${driverId}`, 'error');
@@ -448,8 +453,10 @@
       btn.textContent = 'Cancelling...';
       btn.disabled = true;
 
+      // Strip 'BK-' display prefix to get the raw integer ID
+      const rawId = parseInt(bookingId.replace('BK-', ''));
       try {
-        await fetch(`${BOOKING_URL}/booking/${encodeURIComponent(bookingId)}/cancel`, { method:'PUT' });
+        await fetch(`${BOOKING_URL}/booking/${rawId}/cancel`, { method:'PUT' });
       } catch(_) {}
 
       const b = allBookings.find(x => x.id === bookingId);

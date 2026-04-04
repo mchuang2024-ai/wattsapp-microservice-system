@@ -282,10 +282,14 @@
       btn.innerHTML = `<span class="spinner-sm"></span> Submitting...`;
       btn.disabled = true;
 
+      // Strip display prefixes so IDs reach the backend as integers
+      const rawBookingId = document.getElementById('faultBookingId').value.trim();
+      const rawSlotId    = document.getElementById('faultSlotId').value.trim();
+      const rawDriverId  = document.getElementById('faultDriverId').value.trim();
       const payload = {
-        bookingID:     document.getElementById('faultBookingId').value.trim(),
-        slotID:        document.getElementById('faultSlotId').value.trim(),
-        driverID:      document.getElementById('faultDriverId').value.trim(),
+        bookingID:     parseInt(rawBookingId.replace('BK-','')) || parseInt(rawBookingId) || rawBookingId,
+        slotID:        parseInt(rawSlotId) || rawSlotId,
+        driverID:      parseInt(rawDriverId.replace('DRV-','')) || parseInt(rawDriverId) || rawDriverId,
         faultType:     document.getElementById('faultType').value,
         description:   document.getElementById('faultDesc').value.trim(),
         sessionActive: sessionActive,

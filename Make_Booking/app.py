@@ -21,17 +21,30 @@ db.init_app(app)
 
 
 def publish_booking_created(booking_id, slot_id, driver_id):
+    # Fetch driver's Telegram chat ID so the notification consumer can send a message
+    chat_id = None
+    try:
+        driver_resp = requests.get(f"{config.DRIVER_URL}/drivers/{driver_id}", timeout=5)
+        if driver_resp.status_code == 200:
+            driver_data = driver_resp.json().get('data', {})
+            chat_id = driver_data.get('telegram_chat_id')
+    except Exception as e:
+        print(f"Could not fetch driver info for notification: {e}")
+
     params = {
+        'driverID': driver_id,
+        'chat_id': str(chat_id) if chat_id else None,
+        'message': f'Your booking #{booking_id} at slot {slot_id} has been confirmed! Thank you for using PulsePark.',
+        'type': 'booking',
         'bookingID': booking_id,
         'slotID': slot_id,
-        'driverID': driver_id,
         'station': 'Sengkang Hub'
     }
-    connection = pika.BlockingConnection(pika.URLParameters('amqp://admin:password123@rabbitmq:5672/'))
+    connection = pika.BlockingConnection(pika.URLParameters(config.RABBITMQ_URL))
     channel = connection.channel()
-    channel.exchange_declare(exchange='pulsepark.events', exchange_type='topic', durable=True)
+    channel.exchange_declare(exchange='wattsapp_topic', exchange_type='topic', durable=True)
     channel.basic_publish(
-        exchange='pulsepark.events',
+        exchange='wattsapp_topic',
         routing_key='booking.created',
         body=json.dumps(params),
         properties=pika.BasicProperties(content_type='application/json', delivery_mode=2)
@@ -52,6 +65,10 @@ def create_booking():
 
     driver_id = data['driverID']
     charger_id = data['chargerID']
+    try:
+        charger_id = int(charger_id)
+    except (ValueError, TypeError):
+        pass
     starttime = data['starttime']
     endtime = data['endtime']
     deposit = data['deposit']
@@ -60,7 +77,7 @@ def create_booking():
     try:
         payment_resp = requests.post(
             config.PAYMENT_URL,
-            json={'driverID': driver_id, 'deposit': deposit},
+            json={'driverID': driver_id, 'bookingID': 0, 'amount': deposit},
             timeout=10
         )
         if payment_resp.status_code not in (200, 201):
@@ -77,8 +94,8 @@ def create_booking():
             json={
                 'driverID': driver_id,
                 'slotID': charger_id,
-                'startTime': starttime,
-                'endTime': endtime
+                'startTime': starttime.replace('T', ' '),
+                'endTime': endtime.replace('T', ' ')
             },
             timeout=10
         )
@@ -100,7 +117,9 @@ def create_booking():
         return jsonify({'error': 'Booking creation failed', 'details': str(e)}), 500
 
     booking_data = booking_resp.json() if booking_resp.content else {}
-    booking_id = booking_data.get('bookingID') or booking_data.get('id') or None
+    # booking service returns {"code": 201, "data": {"bookingID": ...}}
+    inner = booking_data.get('data', booking_data)
+    booking_id = inner.get('bookingID') or inner.get('id') or booking_data.get('bookingID') or None
 
     if not booking_id:
         try:

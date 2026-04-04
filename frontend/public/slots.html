@@ -188,15 +188,12 @@
     const MAKE_BOOKING_URL = 'http://localhost:5011';
     const DRIVER_URL = 'http://localhost:5001';
 
+    // Fallback slots — IDs match real DB integers so booking still works if view-slots is down
+    const today = new Date().toISOString().split('T')[0];
     const MOCK_SLOTS = [
-      { id:'SLT-001', location:'North Hub',   type:'fast', power:'50kW',  status:'available', deposit:5 },
-      { id:'SLT-002', location:'South Hub',   type:'slow', power:'22kW',  status:'available', deposit:5 },
-      { id:'SLT-003', location:'East Hub',    type:'fast', power:'100kW', status:'occupied',  deposit:5 },
-      { id:'SLT-004', location:'West Hub',    type:'slow', power:'11kW',  status:'faulty',    deposit:5 },
-      { id:'SLT-005', location:'Central Hub', type:'fast', power:'150kW', status:'available', deposit:5 },
-      { id:'SLT-006', location:'North Hub',   type:'slow', power:'7kW',   status:'available', deposit:5 },
-      { id:'SLT-007', location:'South Hub',   type:'fast', power:'50kW',  status:'available', deposit:5 },
-      { id:'SLT-008', location:'East Hub',    type:'slow', power:'22kW',  status:'available', deposit:5 },
+      { id:1, location:'Sengkang Hub',  type:'fast', power:'50kW',  status:'available', deposit:5, startTime:`${today} 09:00:00`, endTime:`${today} 10:00:00` },
+      { id:2, location:'Tampines Hub',  type:'fast', power:'50kW',  status:'available', deposit:5, startTime:`${today} 09:00:00`, endTime:`${today} 10:00:00` },
+      { id:3, location:'Jurong Hub',    type:'fast', power:'50kW',  status:'available', deposit:5, startTime:`${today} 09:00:00`, endTime:`${today} 10:00:00` },
     ];
 
     let selectedSlot = null;
@@ -374,11 +371,11 @@
         <div class="flex flex-col gap-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Driver ID <span class="text-red-400">*</span></label>
-            <input type="text" id="bkDriverId" placeholder="e.g. DRV-1042" class="input-field text-sm" />
+            <input type="number" id="bkDriverId" placeholder="e.g. 1" value="1" class="input-field text-sm" />
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Charger ID <span class="text-red-400">*</span></label>
-            <input type="text" id="bkChargerId" placeholder="e.g. CHG-007" class="input-field text-sm" value="${slot.id}" />
+            <label class="block text-xs text-slate-400 mb-1">Charger ID</label>
+            <input type="text" id="bkChargerId" class="input-field text-sm" value="${slot.id}" readonly style="opacity:0.6;cursor:not-allowed" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -442,7 +439,7 @@
 
       const payload = {
         driverID: parseInt(driverId) || driverId,
-        chargerID: chargerId,
+        chargerID: parseInt(chargerId) || chargerId,
         slotID: selectedSlot.id,
         starttime: `${date}T${start}:00`,
         endtime:   `${date}T${end}:00`,

@@ -179,16 +179,11 @@
     let currentView = 'grid';
     let autoRefreshTimer;
 
+    // Fallback stations — IDs match real OutSystems slot IDs (integers)
     const MOCK_STATIONS = [
-      { id:'SLT-001', location:'North Hub', type:'fast',  status:'available', deposit:5,  power:'50kW',  spots:4 },
-      { id:'SLT-002', location:'South Hub', type:'slow',  status:'available', deposit:5,  power:'22kW',  spots:8 },
-      { id:'SLT-003', location:'East Hub',  type:'fast',  status:'occupied',  deposit:5,  power:'100kW', spots:2 },
-      { id:'SLT-004', location:'West Hub',  type:'slow',  status:'faulty',    deposit:5,  power:'11kW',  spots:6 },
-      { id:'SLT-005', location:'Central Hub',type:'fast', status:'available', deposit:5,  power:'150kW', spots:3 },
-      { id:'SLT-006', location:'North Hub', type:'slow',  status:'available', deposit:5,  power:'7kW',   spots:10},
-      { id:'SLT-007', location:'South Hub', type:'fast',  status:'occupied',  deposit:5,  power:'50kW',  spots:4 },
-      { id:'SLT-008', location:'East Hub',  type:'slow',  status:'available', deposit:5,  power:'22kW',  spots:5 },
-      { id:'SLT-009', location:'Central Hub',type:'fast', status:'faulty',    deposit:5,  power:'75kW',  spots:2 },
+      { id:1, location:'Sengkang Hub', type:'fast', status:'available', deposit:5, power:'50kW',  spots:4 },
+      { id:2, location:'Tampines Hub', type:'fast', status:'available', deposit:5, power:'50kW',  spots:4 },
+      { id:3, location:'Jurong Hub',   type:'fast', status:'available', deposit:5, power:'50kW',  spots:4 },
     ];
 
     function showToast(msg, type='info') {
