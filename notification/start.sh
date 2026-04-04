@@ -1,6 +1,6 @@
 #!/bin/sh
 # Create RabbitMQ exchange and queues
-python amqp_setup.py
+python rabbitmq/amqp_setup.py
 
 # Start HTTP server in background
 python notification.py &
