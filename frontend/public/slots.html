@@ -158,6 +158,8 @@
           <thead>
             <tr>
               <th>Slot ID</th>
+              <th>Start Time</th>
+              <th>End Time</th>
               <th>Status</th>
               <th>Deposit</th>
               <th>Action</th>
@@ -229,6 +231,8 @@
           power: s.powerOutput || 'Unknown',
           status: s.status || 'available',
           deposit: s.deposit || 5,
+          startTime: s.startTime || '',
+          endTime: s.endTime || '',
         }));
       } catch(_) { return MOCK_SLOTS; }
     }
@@ -254,7 +258,21 @@
       const data = await fetchSlots(qs ? '&'+qs : '');
 
       let filtered = data.length ? data : MOCK_SLOTS;
-      renderSlots(filtered.filter(s => s.status==='available'));
+      filtered = filtered.filter(s => s.status==='available');
+      // Client-side time filtering
+      if(start) {
+        filtered = filtered.filter(s => {
+          const slotStart = (s.startTime || '').split(' ')[1];
+          return slotStart && slotStart.slice(0,5) >= start;
+        });
+      }
+      if(end) {
+        filtered = filtered.filter(s => {
+          const slotEnd = (s.endTime || '').split(' ')[1];
+          return slotEnd && slotEnd.slice(0,5) <= end;
+        });
+      }
+      renderSlots(filtered);
     }
 
     function showLoader() {
@@ -287,6 +305,8 @@
       body.innerHTML = slots.map(s => `
         <tr>
           <td class="font-mono font-semibold text-white">${s.id}</td>
+          <td class="text-slate-300 text-xs">${s.startTime || '--'}</td>
+          <td class="text-slate-300 text-xs">${s.endTime || '--'}</td>
           <td><span class="text-xs font-semibold px-2.5 py-1 rounded-full ${statusClass(s.status)}">${s.status.charAt(0).toUpperCase()+s.status.slice(1)}</span></td>
           <td class="font-semibold text-white">$${s.deposit||5}</td>
           <td>
@@ -326,7 +346,11 @@
 
     function openBookingModal(slot) {
       selectedSlot = slot;
-      const today = new Date().toISOString().split('T')[0];
+      // Extract date and times from slot's startTime/endTime (format: "2026-04-02 10:00:00")
+      const slotDate = slot.startTime ? slot.startTime.split(' ')[0] : new Date().toISOString().split('T')[0];
+      const slotStart = slot.startTime ? slot.startTime.split(' ')[1]?.slice(0,5) : '10:00';
+      const slotEnd = slot.endTime ? slot.endTime.split(' ')[1]?.slice(0,5) : '12:00';
+      const today = slotDate;
       document.getElementById('modalContent').innerHTML = `
         <div class="flex items-center justify-between mb-5">
           <div>
@@ -363,12 +387,12 @@
             </div>
             <div>
               <label class="block text-xs text-slate-400 mb-1">Start Time</label>
-              <input type="time" id="bkStart" class="input-field text-sm" value="10:00" />
+              <input type="time" id="bkStart" class="input-field text-sm" value="${slotStart}" />
             </div>
           </div>
           <div>
             <label class="block text-xs text-slate-400 mb-1">End Time</label>
-            <input type="time" id="bkEnd" class="input-field text-sm" value="12:00" />
+            <input type="time" id="bkEnd" class="input-field text-sm" value="${slotEnd}" />
           </div>
           <div style="background:rgba(16,217,160,0.06);border:1px solid rgba(16,217,160,0.2);border-radius:0.5rem;padding:0.75rem" class="flex items-center justify-between">
             <span class="text-sm text-slate-400">Deposit Required</span>
@@ -417,11 +441,11 @@
       btn.disabled = true;
 
       const payload = {
-        driverID: driverId,
+        driverID: parseInt(driverId) || driverId,
         chargerID: chargerId,
         slotID: selectedSlot.id,
-        startTime: `${date}T${start}`,
-        endTime:   `${date}T${end}`,
+        starttime: `${date}T${start}:00`,
+        endtime:   `${date}T${end}:00`,
         deposit:   selectedSlot.deposit || 5,
       };
 
@@ -431,19 +455,20 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if(res.status === 403) {
-          const d = await res.json();
-          throw new Error(d.message || 'Driver is blocked due to penalty score.');
-        }
-        if(!res.ok) throw new Error('Booking failed. Please try again.');
         const data = await res.json();
+        if(res.status === 403) {
+          throw new Error(data.message || 'Driver is blocked due to penalty score.');
+        }
+        if(!res.ok) throw new Error(data.error || data.message || `Booking failed (${res.status}).`);
         showBookingSuccess(payload, data.bookingID || `BK-${Date.now().toString().slice(-6)}`);
       } catch(err) {
+        btn.textContent = 'Confirm Booking';
+        btn.disabled = false;
         if(err.message.includes('blocked')||err.message.includes('penalty')) {
           showBookingBlocked(err.message);
         } else {
-          // Mock success for demo
-          showBookingSuccess(payload, `BK-${Date.now().toString().slice(-6)}`);
+          errBox.textContent = err.message || 'Booking failed. Please check services are running.';
+          errBox.classList.remove('hidden');
         }
       }
     }
@@ -461,12 +486,12 @@
             <div><p class="text-xs text-slate-500 mb-0.5">Slot</p><p class="font-semibold text-slate-200">${selectedSlot.id}</p></div>
             <div><p class="text-xs text-slate-500 mb-0.5">Driver</p><p class="text-slate-200">${payload.driverID}</p></div>
             <div><p class="text-xs text-slate-500 mb-0.5">Deposit</p><p class="font-semibold text-white">$${payload.deposit}</p></div>
-            <div class="col-span-2"><p class="text-xs text-slate-500 mb-0.5">Time</p><p class="text-slate-200">${payload.startTime.replace('T',' ')} — ${payload.endTime.split('T')[1]}</p></div>
+            <div class="col-span-2"><p class="text-xs text-slate-500 mb-0.5">Time</p><p class="text-slate-200">${payload.starttime.replace('T',' ')} — ${payload.endtime.split('T')[1]}</p></div>
           </div>
           <div class="tg-msg text-left mb-5">
             <strong>Telegram Notification Sent</strong><br/>
-            Hi ${payload.driverID}, your booking <strong>${bookingId}</strong> at ${selectedSlot.location} is confirmed.<br/>
-            Start: ${payload.startTime.replace('T',' ')} | Deposit: $${payload.deposit}
+            Hi ${payload.driverID}, your booking <strong>${bookingId}</strong> at ${selectedSlot.location || 'Slot ' + selectedSlot.id} is confirmed.<br/>
+            Start: ${payload.starttime.replace('T',' ')} | Deposit: $${payload.deposit}
           </div>
           <div class="flex gap-3">
             <a href="bookings.html" class="btn-primary flex-1 text-sm text-center">View My Bookings</a>
