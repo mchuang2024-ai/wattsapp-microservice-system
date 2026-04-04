@@ -226,7 +226,7 @@
       try {
         const today = new Date().toISOString().split('T')[0];
         const [slotsRes, faultyIds] = await Promise.all([
-          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=1`),
+          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=3`),
           fetchFaultySlotIds(),
         ]);
 

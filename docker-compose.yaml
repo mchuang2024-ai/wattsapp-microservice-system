@@ -27,6 +27,8 @@ services:
       - "5001:5001"            # changed from 5011 → 5001
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/driver
+    dns:
+      - 8.8.8.8
     networks:
       - esd-network
 
@@ -40,6 +42,8 @@ services:
       - "5002:5002"
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/booking
+    dns:
+      - 8.8.8.8
     networks:
       - esd-network
 
@@ -58,6 +62,8 @@ services:
       # - RABBITMQ_HOST=rabbitmq
       # - RABBITMQ_USER=admin
       # - RABBITMQ_PASS=password123
+    dns:
+      - 8.8.8.8
     networks:
       - esd-network
 
@@ -80,6 +86,8 @@ services:
       - RABBITMQ_PASS=password123
       - TELEGRAM_BOT_TOKEN=8766528831:AAFmXWP5UhrEXaOkvB9VP1ILtnN_oYeUUZc
       - DRIVER_URL=http://driver:5001
+    dns:
+      - 8.8.8.8
     networks:
       - esd-network
 
@@ -93,6 +101,8 @@ services:
       - "5005:5005"
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/maintenance
+    dns:
+      - 8.8.8.8
     networks:
       - esd-network
 

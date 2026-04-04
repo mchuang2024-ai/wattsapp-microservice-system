@@ -23,6 +23,7 @@
     body { background-color:#0f1623; color:#e2e8f0; font-family:'Inter',sans-serif; }
     .status-available  { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
     .status-confirmed  { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+    .status-upcoming   { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
     .status-active     { background:rgba(34,211,238,0.15); color:#22d3ee; border:1px solid rgba(34,211,238,0.3); }
     .status-late       { background:rgba(251,146,60,0.15); color:#fb923c; border:1px solid rgba(251,146,60,0.3); }
     .status-cancelled  { background:rgba(100,116,139,0.15); color:#64748b; border:1px solid rgba(100,116,139,0.3); }
@@ -308,11 +309,11 @@
       body.innerHTML = list.map(b => {
         const start = new Date(b.startTime);
         const end   = new Date(b.endTime);
-        const isConfirmed = b.status === 'confirmed';
-        const isActive    = b.status === 'active';
+        const isConfirmed = b.status === 'confirmed' || b.status === 'upcoming';
+        const isActive    = b.status === 'active' || b.status === 'checked-in';
         const isLate      = b.status === 'late';
-        const canCancel   = b.status === 'confirmed';
-        const canFault    = b.status === 'active' || b.status === 'completed';
+        const canCancel   = isConfirmed;
+        const canFault    = isConfirmed || isActive || isLate || b.status === 'completed';
         const canScenario2 = isConfirmed || isActive || isLate;
         const statusCls   = `status-${b.status}`;
 
