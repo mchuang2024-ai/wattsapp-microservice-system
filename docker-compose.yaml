@@ -77,6 +77,7 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=admin
       - RABBITMQ_PASS=password123
+      - TELEGRAM_BOT_TOKEN=8761333590:AAGGqcM1cETwjMQRpoVpr5OIEEOJ2vMtraQ
     networks:
       - esd-network
 
@@ -173,6 +174,7 @@ services:
     environment:
       - PAYMENT_URL=http://payment:5003/payment/hold
       - BOOKING_URL=http://booking:5002/booking
+      - DRIVER_URL=http://driver:5001
       - RABBITMQ_URL=amqp://admin:password123@rabbitmq:5672/%2F
     ports:
       - "5011:5011"

@@ -62,7 +62,7 @@ def handleNoShow():
             driverID = request.json.get("driverID") 
             lateCheckIn = request.json.get("lateCheckIn")
             
-            #2 
+            #2
             booking, booking_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}", method='GET')
 
             if booking_http_status not in range(200, 300):
@@ -73,9 +73,19 @@ def handleNoShow():
                         "message": "Failure in retrieving booking status",
                     }), 500
 
+            # Fetch driver's Telegram chat ID for notifications
+            chat_id = None
+            try:
+                driver_resp, driver_status = invoke_http(f"{driverURL}/drivers/{driverID}", method='GET')
+                if driver_status in range(200, 300):
+                    chat_id = driver_resp.get('data', {}).get('telegram_chat_id')
+            except Exception as e:
+                print(f"Could not fetch driver info for notification: {e}")
 
-            if lateCheckIn == 'True':
-                lateCheckIn = True
+            if isinstance(lateCheckIn, bool):
+                pass  # already a boolean from JSON
+            elif isinstance(lateCheckIn, str):
+                lateCheckIn = lateCheckIn.lower() == 'true'
             else:
                 lateCheckIn = False
             
@@ -91,8 +101,8 @@ def handleNoShow():
                         "message": "Failure in updating booking status to late check in",
                     }), 500
 
-                # 4a. 
-                minsLate = booking["data"]["minsLate"]
+                # 4a. Use minsLate from the checkin response (freshly calculated), not the stale booking fetch
+                minsLate = updateBookingStatusResult.get("data", {}).get("minsLate", 0)
                 paymentData = {
                     "bookingID" : bookingID,
                     "driverID" : driverID,
@@ -119,12 +129,15 @@ def handleNoShow():
                         "message": "Failure to increment the driver's late arrival count",
                     }), 500
 
-                # 6a. 
+                # 6a. Publish late-fee notification (include driverID, chat_id, type for the notification consumer)
                 message = json.dumps({
+                    "driverID": driverID,
+                    "chat_id": str(chat_id) if chat_id else None,
+                    "type": "late-fee",
                     "bookingID": bookingID,
-                    "minsLate" : minsLate,
-                    "amount" : amount,
-                    "message": "Your booking was checked in late. A late fee has been applied to your account."
+                    "minsLate": minsLate,
+                    "amount": amount,
+                    "message": f"Late check-in recorded for Booking #{bookingID}. A late fee of ${amount:.2f} has been charged for being {minsLate} minute(s) late."
                 })
                 channel.basic_publish(exchange=exchange_name, routing_key="late.charged", body=message)
 
@@ -166,10 +179,13 @@ def handleNoShow():
                         "message": "Failure to forfeit deposit payment",
                     }), 500
 
-                # 6b. 
+                # 6b. Publish no-show notification (include driverID, chat_id, type for the notification consumer)
                 message = json.dumps({
+                    "driverID": driverID,
+                    "chat_id": str(chat_id) if chat_id else None,
+                    "type": "no-show",
                     "bookingID": bookingID,
-                    "message": "Your booking was marked as no-show. Your deposit has been forfeited."
+                    "message": f"Your Booking #{bookingID} has been marked as no-show. Your deposit has been forfeited."
                 })
                 channel.basic_publish(exchange=exchange_name, routing_key="slot.released", body=message)
 
