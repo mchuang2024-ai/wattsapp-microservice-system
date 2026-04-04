@@ -16,11 +16,14 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 
 db = SQLAlchemy(app)
 
+with app.app_context():
+    db.create_all()
+
 class Driver(db.Model):
     __tablename__ = 'Drivers'
     driverID = db.Column(db.Integer, primary_key=True)
     late_count = db.Column(db.Integer, default=0)
-    telegram_chat_id = db.Column(db.Integer, default= None)
+    telegram_chat_id = db.Column(db.String(100), default=None)
     
     def json(self):
         return {'driverID': self.driverID, 'late_count': self.late_count, 'telegram_chat_id': self.telegram_chat_id}
