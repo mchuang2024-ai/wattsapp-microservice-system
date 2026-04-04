@@ -17,6 +17,9 @@ export interface ChargingSlot {
   location: string;
   powerOutput: string;
   pricePerKwh: number;
+  date: string;
+  startTime: string;
+  endTime: string;
 }
 
 export interface Booking {
@@ -83,6 +86,9 @@ function normalizeSlot(raw: any): ChargingSlot {
     location: String(raw.location ?? 'Unknown location'),
     powerOutput: String(raw.powerOutput ?? 'Unknown'),
     pricePerKwh: Number(raw.pricePerKwh ?? 0.0),
+    date: String(raw.date ?? ''),
+    startTime: String(raw.startTime ?? ''),
+    endTime: String(raw.endTime ?? ''),
   };
 }
 
@@ -109,7 +115,25 @@ export async function fetchSlotsByFilter(params: {
   const response = await fetch(`${VIEW_SLOTS_SERVICE_URL}/view-slots?${query.toString()}`);
   if (!response.ok) throw new Error('Failed to fetch slots');
   const payload = await response.json();
-  return (payload.slots ?? []).map(normalizeSlot);
+  let slots: ChargingSlot[] = (payload.slots ?? []).map(normalizeSlot);
+
+  // Client-side time filtering (API returns all 1-hour blocks for the day)
+  if (params.startTime) {
+    const filterStart = params.startTime; // "HH:MM"
+    slots = slots.filter(s => {
+      const slotHour = s.startTime.split(' ')[1]?.slice(0, 5) ?? '';
+      return slotHour >= filterStart;
+    });
+  }
+  if (params.endTime) {
+    const filterEnd = params.endTime; // "HH:MM"
+    slots = slots.filter(s => {
+      const slotEndHour = s.endTime.split(' ')[1]?.slice(0, 5) ?? '';
+      return slotEndHour <= filterEnd;
+    });
+  }
+
+  return slots;
 }
 
 export async function fetchDriverLateCount(driverId: string): Promise<{ lateCount: number; penaltyScore: number; isBlocked: boolean }> {

@@ -37,6 +37,11 @@ class MaintenanceTicket(db.Model):
             "chargerType": self.chargerType,
             "status": self.status
         }
+
+with app.app_context():
+    db.create_all()
+    print("Maintenance database tables created successfully.")
+
 # ROUTES
 # CREATE TICKET
 @app.route("/maintenance/ticket", methods=['POST'])

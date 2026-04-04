@@ -1,10 +1,12 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import requests
 import config
 
 app = Flask(__name__)
+CORS(app)
 #check drivers late count score. if 5 and above, return no slots available or some message banned
 #check status on outsystems, get list of available charger slotid
 #check the date, get all 1 hour slots on that date as well as the charger slotid its associated with

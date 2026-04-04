@@ -27,6 +27,7 @@ Expected broadcast (waitlist) message format:
 import json
 import os
 
+import requests
 import amqp_lib
 from notification import app, db, Notification, send_telegram_message
 
@@ -39,6 +40,7 @@ RABBIT_PASS   = os.environ.get("RABBITMQ_PASS", "password123")
 EXCHANGE_NAME = "wattsapp_topic"
 EXCHANGE_TYPE = "topic"
 QUEUE_NAME    = "notification_queue"
+DRIVER_URL    = os.environ.get("DRIVER_URL", "http://driver:5001")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -47,11 +49,23 @@ def process_notification(driver_id, chat_id, message, notif_type):
     """Send a Telegram message and log the result to the database."""
     telegram_status = "sent"
 
+    # Fallback: look up chat_id from driver service if not provided in the message
+    if not chat_id and driver_id:
+        try:
+            resp = requests.get(f"{DRIVER_URL}/drivers/{driver_id}", timeout=5)
+            if resp.status_code == 200:
+                chat_id = resp.json().get('data', {}).get('telegram_chat_id')
+                if chat_id:
+                    print(f"[AMQP] Resolved chat_id={chat_id} for driverID={driver_id} via driver service")
+        except Exception as e:
+            print(f"[AMQP] Could not fetch driver chat_id: {e}")
+
     if chat_id:
         success, _ = send_telegram_message(str(chat_id), message)
         if not success:
             telegram_status = "failed"
     else:
+        print(f"[AMQP] No chat_id for driverID={driver_id} — skipping Telegram")
         telegram_status = "failed"
 
     with app.app_context():

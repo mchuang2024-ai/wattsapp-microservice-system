@@ -146,7 +146,7 @@ if __name__ == '__main__':
     # 5. Replace the value below with your chat ID
     # -------------------------------------------------
     
-    YOUR_CHAT_ID = "634243561"  # Cay's Telegram chat ID
+    YOUR_CHAT_ID = "483102075"  # Cay's Telegram chat ID
 
     # Tests that work without Telegram
     test_get_all_notifications()

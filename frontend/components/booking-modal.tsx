@@ -16,10 +16,16 @@ interface BookingModalProps {
 }
 
 export function BookingModal({ slot, isOpen, onClose, onConfirm }: BookingModalProps) {
+  // Pre-fill start/end time from the slot's actual time block
+  const toLocalDatetime = (dt: string) => {
+    if (!dt) return "";
+    // "2026-04-02 10:00:00" -> "2026-04-02T10:00"
+    return dt.replace(" ", "T").slice(0, 16);
+  };
   const [formData, setFormData] = useState({
     driverId: "",
-    startTime: "",
-    endTime: "",
+    startTime: toLocalDatetime(slot.startTime),
+    endTime: toLocalDatetime(slot.endTime),
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

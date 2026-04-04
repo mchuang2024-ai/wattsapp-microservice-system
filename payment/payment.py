@@ -9,7 +9,8 @@ app = Flask(__name__)
 
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get('dbURL'))
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('dbURL') or \
+    'mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}
 
@@ -37,7 +38,11 @@ class Payment(db.Model):
             'createdAt': self.createdAt.isoformat(),
         }
         return dto
-    
+
+with app.app_context():
+    db.create_all()
+    print("Payment database tables created successfully.")
+
 # Make Payment (Create a new payment record) (body : {driverID, bookingID, amount})
 @app.route("/payment/hold", methods=['POST'])
 def makePayment():
@@ -75,7 +80,7 @@ def extraPayment():
     minsLate = request.json.get('minsLate', None)
 
     # Calculate the late fee based on the number of minutes late
-    late_fee = minsLate * 0.1  # Example calculation, adjust as needed
+    late_fee = minsLate * 0.50  # $0.50 per minute late
 
     payment = Payment(bookingID=bookingID, driverID=driverID, amount=late_fee, type='late-fee')
 
@@ -129,6 +134,32 @@ def penaltyPayment():
     ), 201
     
 
+
+
+# Refund deposit to driver (body: {bookingID, driverID, amount})
+@app.route("/payment/refund", methods=['POST'])
+def refundPayment():
+    bookingID = request.json.get('bookingID', None)
+    driverID = request.json.get('driverID', None)
+    amount = request.json.get('amount', 5.0)
+
+    payment = Payment(bookingID=bookingID, driverID=driverID, amount=amount, type='refund', status='completed')
+
+    try:
+        db.session.add(payment)
+        db.session.commit()
+    except Exception as e:
+        print("Error: {}".format(str(e)))
+        return jsonify({
+            "code": 500,
+            "message": "An error occurred while recording the refund. " + str(e)
+        }), 500
+
+    return jsonify({
+        "code": 201,
+        "data": payment.json(),
+        "refundAmount": amount
+    }), 201
 
 
 # Get all payments testing purpose

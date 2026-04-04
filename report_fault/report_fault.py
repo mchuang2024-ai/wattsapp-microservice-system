@@ -6,6 +6,8 @@ import json
 from datetime import datetime
 import sys
 import functools
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 print = functools.partial(print, flush=True)
 
 app = Flask(__name__)
@@ -94,9 +96,10 @@ def report_fault():
         # Refund user
         print(f"[3] Attempting refund for driver {driverID}...")
         try:
-            resp = requests.post(f"{PAYMENT_URL}/payment/forfeit-deposit", json={
+            resp = requests.post(f"{PAYMENT_URL}/payment/refund", json={
                 "bookingID": bookingID,
                 "driverID": driverID,
+                "amount": 5.0,
             }, timeout=2)
             results.append({"step": "refund", "status": resp.status_code})
             print(f"    ✓ Refund successful: {resp.status_code}")

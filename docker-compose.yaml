@@ -71,6 +71,7 @@ services:
       - "5004:5004"
     depends_on:
       - rabbitmq
+      - driver
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/notification
       - RABBITMQ_HOST=rabbitmq
@@ -78,6 +79,7 @@ services:
       - RABBITMQ_USER=admin
       - RABBITMQ_PASS=password123
       - TELEGRAM_BOT_TOKEN=8761333590:AAGGqcM1cETwjMQRpoVpr5OIEEOJ2vMtraQ
+      - DRIVER_URL=http://driver:5001
     networks:
       - esd-network
 
@@ -181,6 +183,7 @@ services:
     depends_on:
       - payment
       - booking
+      - driver
       - rabbitmq
     networks:
       - esd-network

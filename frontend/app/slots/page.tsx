@@ -244,33 +244,20 @@ function SlotsPageContent() {
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
                       <TableHead className="text-muted-foreground">Slot ID</TableHead>
-                      <TableHead className="text-muted-foreground">Type</TableHead>
-                      <TableHead className="text-muted-foreground">Location</TableHead>
-                      <TableHead className="text-muted-foreground">Power</TableHead>
+                      <TableHead className="text-muted-foreground">Start Time</TableHead>
+                      <TableHead className="text-muted-foreground">End Time</TableHead>
                       <TableHead className="text-muted-foreground">Status</TableHead>
-                      <TableHead className="text-muted-foreground">Price</TableHead>
                       <TableHead className="text-muted-foreground">Deposit</TableHead>
                       <TableHead className="text-right text-muted-foreground">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {slots.map((slot) => (
-                      <TableRow key={slot.id} className="border-border">
+                    {slots.map((slot, idx) => (
+                      <TableRow key={`${slot.id}-${slot.startTime}-${idx}`} className="border-border">
                         <TableCell className="font-medium text-foreground">{slot.id}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {slot.type === "Fast" ? (
-                              <Zap className="h-4 w-4 text-primary" />
-                            ) : (
-                              <Battery className="h-4 w-4 text-accent" />
-                            )}
-                            <span className="text-foreground">{slot.type}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{slot.location}</TableCell>
-                        <TableCell className="text-muted-foreground">{slot.powerOutput}</TableCell>
+                        <TableCell className="text-muted-foreground">{slot.startTime}</TableCell>
+                        <TableCell className="text-muted-foreground">{slot.endTime}</TableCell>
                         <TableCell>{statusBadge(slot.status)}</TableCell>
-                        <TableCell className="text-foreground">${slot.pricePerKwh}/kWh</TableCell>
                         <TableCell className="font-medium text-primary">${slot.deposit}</TableCell>
                         <TableCell className="text-right">
                           <Button
