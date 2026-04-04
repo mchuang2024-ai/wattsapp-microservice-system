@@ -78,7 +78,7 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=admin
       - RABBITMQ_PASS=password123
-      - TELEGRAM_BOT_TOKEN=8761333590:AAGGqcM1cETwjMQRpoVpr5OIEEOJ2vMtraQ
+      - TELEGRAM_BOT_TOKEN=8766528831:AAFmXWP5UhrEXaOkvB9VP1ILtnN_oYeUUZc
       - DRIVER_URL=http://driver:5001
     networks:
       - esd-network
