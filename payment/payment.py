@@ -50,6 +50,23 @@ def makePayment():
     bookingID = request.json.get('bookingID', None)
     amount = request.json.get('amount', None)
 
+    if (amount == None or driverID == None or bookingID == None):
+        return jsonify(
+            {
+                "code" : 400,
+                "data" : request.get_json(),
+                "message" : "driverID, bookingID and amount must be indicated"
+            }
+        ), 400
+    
+    if (type(driverID)!=int or type(bookingID) != int or (type(amount) not in [int,float])):
+        return jsonify(
+            {
+                "code":400,
+                "message":"Invalid data type in body object."
+            }
+        ), 400
+
     payment = Payment(driverID=driverID, bookingID=bookingID, amount=amount, type='hold')
 
     try:
@@ -78,6 +95,25 @@ def extraPayment():
     bookingID = request.json.get('bookingID', None)
     driverID = request.json.get('driverID', None)
     minsLate = request.json.get('minsLate', None)
+
+    if (minsLate == None or driverID == None or bookingID == None):
+        return jsonify(
+            {
+                "code" : 400,
+                "data" : request.get_json(),
+                "message" : "driverID, bookingID and minsLate must be indicated"
+            }
+        ), 400
+    
+    if (type(driverID)!=int or type(bookingID) != int or (type(minsLate) not in [int,float])):
+        return jsonify(
+            {
+                "code":400,
+                "message":"Invalid data type in body object."
+            }
+        ), 400
+    
+
 
     # Calculate the late fee based on the number of minutes late
     late_fee = minsLate * 0.50  # $0.50 per minute late
@@ -110,6 +146,23 @@ def extraPayment():
 def penaltyPayment():
     bookingID = request.json.get('bookingID', None)
     driverID = request.json.get('driverID', None)
+
+    if (driverID == None or bookingID == None):
+        return jsonify(
+            {
+                "code" : 400,
+                "data" : request.get_json(),
+                "message" : "driverID and bookingID must be indicated"
+            }
+        ), 400
+    
+    if (type(driverID)!= int or type(bookingID) != int):
+        return jsonify(
+            {
+                "code":400,
+                "message":"Invalid data type in body object."
+            }
+        ), 400
     
     payment = Payment(bookingID=bookingID, driverID=driverID, amount=5.0, type='forfeit')
 
