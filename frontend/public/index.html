@@ -219,9 +219,15 @@
         const res = await fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=1`);
         if(!res.ok) throw new Error('API error');
         const data = await res.json();
-        return (data.slots || []).map(s => ({
+        // view-slots returns one row per (slotID × hour) — deduplicate to one card per charger
+        const seen = new Set();
+        return (data.slots || []).filter(s => {
+          if(seen.has(s.slotID)) return false;
+          seen.add(s.slotID);
+          return true;
+        }).map(s => ({
           id: s.slotID || s.id,
-          location: s.location || 'Unknown',
+          location: s.location || `Charger ${s.slotID}`,
           type: s.type || 'fast',
           status: s.status || 'available',
           deposit: s.deposit || 5,
