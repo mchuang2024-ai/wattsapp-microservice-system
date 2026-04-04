@@ -28,6 +28,8 @@
     .status-cancelled  { background:rgba(100,116,139,0.15); color:#64748b; border:1px solid rgba(100,116,139,0.3); }
     .status-completed  { background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.3); }
     .status-faulty     { background:rgba(239,68,68,0.15);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+    .status-no_show    { background:rgba(239,68,68,0.15);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+    .status-checked-in { background:rgba(34,211,238,0.15); color:#22d3ee; border:1px solid rgba(34,211,238,0.3); }
     .card { background:#151f2e; border:1px solid #1e2d40; border-radius:0.75rem; }
     .btn-primary { background:#10d9a0; color:#0f1623; font-weight:600; border-radius:0.5rem; padding:0.4rem 0.875rem; transition:background 0.2s; cursor:pointer; border:none; font-size:0.8rem; }
     .btn-primary:hover { background:#0ba87a; }
@@ -66,6 +68,12 @@
     .fee-badge { background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); border-radius:9999px; font-size:0.7rem; font-weight:700; padding:2px 10px; }
     .tab-btn { padding:0.5rem 1rem; border-radius:0.5rem; font-size:0.8rem; font-weight:500; cursor:pointer; border:none; transition:all 0.2s; background:transparent; color:#64748b; }
     .tab-btn.active { background:#151f2e; color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+    .btn-info { background:rgba(34,211,238,0.1); color:#22d3ee; border:1px solid rgba(34,211,238,0.3); border-radius:0.5rem; padding:0.4rem 0.875rem; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-info:hover { background:rgba(34,211,238,0.2); }
+    .btn-noshow { background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.3); border-radius:0.5rem; padding:0.4rem 0.875rem; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-noshow:hover { background:rgba(239,68,68,0.2); }
+    .time-input { background:#0f1623; border:1px solid #1e2d40; border-radius:0.5rem; color:#e2e8f0; padding:0.5rem 0.75rem; width:100%; transition:border-color 0.2s; font-size:0.9rem; }
+    .time-input:focus { outline:none; border-color:#10d9a0; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -178,6 +186,16 @@
     <div class="modal-box" id="noshowContent"></div>
   </div>
 
+  <!-- Check-in Time Picker Modal -->
+  <div id="checkinModal" class="modal-bg" onclick="closeMod('checkinModal',event)">
+    <div class="modal-box" id="checkinContent"></div>
+  </div>
+
+  <!-- No-Show Confirm Modal -->
+  <div id="noShowConfirmModal" class="modal-bg" onclick="closeMod('noShowConfirmModal',event)">
+    <div class="modal-box" id="noShowConfirmContent"></div>
+  </div>
+
   <!-- Cancel Confirm Modal -->
   <div id="cancelModal" class="modal-bg" onclick="closeMod('cancelModal',event)">
     <div class="modal-box" id="cancelContent"></div>
@@ -189,6 +207,7 @@
   <script>
     const BOOKING_URL = 'http://localhost:5002';
     const HANDLE_NOSHOW_URL = 'http://localhost:5100';
+    const DRIVER_URL = 'http://localhost:5001';
     let allBookings = [];
     let activeBookingId = null;
     let countdownInterval = null;
@@ -289,11 +308,18 @@
       body.innerHTML = list.map(b => {
         const start = new Date(b.startTime);
         const end   = new Date(b.endTime);
-        const isActive   = b.status === 'active';
-        const isLate     = b.status === 'late';
-        const canCancel  = b.status === 'confirmed';
-        const canFault   = b.status === 'active' || b.status === 'completed';
-        const statusCls  = `status-${b.status}`;
+        const isConfirmed = b.status === 'confirmed';
+        const isActive    = b.status === 'active';
+        const isLate      = b.status === 'late';
+        const canCancel   = b.status === 'confirmed';
+        const canFault    = b.status === 'active' || b.status === 'completed';
+        const canScenario2 = isConfirmed || isActive || isLate;
+        const statusCls   = `status-${b.status}`;
+
+        // Build time strings for check-in picker min/max
+        const startHH = pad(start.getHours()) + ':' + pad(start.getMinutes());
+        const endHH   = pad(end.getHours()) + ':' + pad(end.getMinutes());
+        const dateStr = start.toISOString().split('T')[0];
 
         return `
           <tr id="row-${b.id}">
@@ -302,7 +328,7 @@
             <td class="font-mono text-xs">${b.driverID}</td>
             <td>
               <p class="text-xs text-slate-300">${start.toLocaleDateString()}</p>
-              <p class="text-xs text-slate-500">${pad(start.getHours())}:${pad(start.getMinutes())} – ${pad(end.getHours())}:${pad(end.getMinutes())}</p>
+              <p class="text-xs text-slate-500">${startHH} – ${endHH}</p>
             </td>
             <td>
               <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${statusCls}">${b.status.charAt(0).toUpperCase()+b.status.slice(1)}</span>
@@ -311,10 +337,13 @@
             <td class="font-semibold text-white">$${b.deposit||0}</td>
             <td>
               <div class="flex flex-wrap gap-1.5">
-                ${isActive||isLate ? `<button class="btn-warn" onclick="openNoshowModal('${b.id}','${b.driverID}')">Late Check-in</button>` : ''}
-                ${canFault         ? `<a href="fault.html?bookingId=${b.id}&slotId=${b.slotID}&driverId=${b.driverID}" class="btn-ghost">Report Fault</a>` : ''}
-                ${canCancel        ? `<button class="btn-danger" onclick="openCancelModal('${b.id}')">Cancel</button>` : ''}
-                ${b.status==='completed'||b.status==='cancelled' ? `<span class="text-xs text-slate-600">—</span>` : ''}
+                ${canScenario2 ? `
+                  <button class="btn-info" onclick="openCheckinModal('${b.id}','${b.driverID}','${dateStr}','${startHH}','${endHH}')">Check-in</button>
+                  <button class="btn-noshow" onclick="openNoShowConfirmModal('${b.id}','${b.driverID}')">No Show</button>
+                ` : ''}
+                ${canFault ? `<a href="fault.html?bookingId=${b.id}&slotId=${b.slotID}&driverId=${b.driverID}" class="btn-ghost">Report Fault</a>` : ''}
+                ${canCancel ? `<button class="btn-danger" onclick="openCancelModal('${b.id}')">Cancel</button>` : ''}
+                ${b.status==='completed'||b.status==='cancelled'||b.status==='no_show' ? `<span class="text-xs text-slate-600">—</span>` : ''}
               </div>
             </td>
           </tr>
@@ -359,59 +388,172 @@
       }, 1000);
     }
 
-    function openNoshowModal(bookingId, driverId) {
-      const booking = allBookings.find(b => b.id === bookingId);
-      const endTime = booking ? new Date(booking.endTime) : new Date();
-      const minsLate = Math.max(0, Math.floor((Date.now() - endTime) / 60000));
-      const fee = (minsLate * 0.5).toFixed(2);
-
-      document.getElementById('noshowContent').innerHTML = `
+    // ── Check-in Modal ──────────────────────────────────────────
+    function openCheckinModal(bookingId, driverId, dateStr, startHH, endHH) {
+      document.getElementById('checkinContent').innerHTML = `
         <div class="flex items-center justify-between mb-5">
           <div>
-            <h2 class="text-lg font-bold text-white">Late Check-in / No-Show</h2>
+            <h2 class="text-lg font-bold text-white">Check In</h2>
             <p class="text-xs text-slate-400 mt-0.5">Booking ${bookingId} · Driver ${driverId}</p>
           </div>
-          <button onclick="closeMod('noshowModal')" style="color:#64748b;background:none;border:none;cursor:pointer;font-size:1.25rem;line-height:1">&#10005;</button>
+          <button onclick="closeMod('checkinModal')" style="color:#64748b;background:none;border:none;cursor:pointer;font-size:1.25rem;line-height:1">&#10005;</button>
         </div>
 
-        <div style="background:#0f1623;border-radius:0.625rem;padding:1rem;margin-bottom:1rem">
-          <div class="grid grid-cols-2 gap-3 text-sm">
+        <div style="background:#0f1623;border-radius:0.625rem;padding:1rem;margin-bottom:1.25rem">
+          <p class="text-xs text-slate-500 mb-2">Select your check-in time (must be within your slot window)</p>
+          <div class="flex items-center gap-3">
             <div>
-              <p class="text-xs text-slate-500 mb-0.5">Late Duration</p>
-              <p class="font-bold text-orange-400">${minsLate} minutes</p>
+              <p class="text-xs text-slate-500 mb-0.5">Slot Start</p>
+              <p class="font-semibold text-brand">${startHH}</p>
             </div>
+            <div class="text-slate-600">→</div>
             <div>
-              <p class="text-xs text-slate-500 mb-0.5">Penalty Fee</p>
-              <p class="font-bold text-red-400">$${fee}</p>
+              <p class="text-xs text-slate-500 mb-0.5">Slot End</p>
+              <p class="font-semibold text-slate-300">${endHH}</p>
             </div>
-            <div class="col-span-2">
-              <p class="text-xs text-slate-500 mb-0.5">Rate</p>
-              <p class="text-slate-300">$0.50 per minute after scheduled end time</p>
-            </div>
+          </div>
+          <div class="mt-4">
+            <label class="block text-xs text-slate-400 mb-1.5">Check-in Time</label>
+            <input type="time" id="checkinTimeInput" class="time-input" min="${startHH}" max="${endHH}" value="${startHH}" />
+            <p class="text-xs text-slate-500 mt-1">Selecting a time after ${startHH} will incur a $0.50/min late fee</p>
           </div>
         </div>
 
-        <div style="background:rgba(251,146,60,0.06);border:1px solid rgba(251,146,60,0.2);border-radius:0.5rem;padding:0.75rem" class="mb-5">
-          <p class="text-xs text-orange-300 font-medium">Note</p>
-          <p class="text-xs text-slate-400 mt-0.5">Confirming this action will log a late incident against the driver and charge the calculated fee. After 3 incidents the driver will be blocked from future bookings.</p>
+        <div id="checkinPreview" class="mb-4" style="background:rgba(16,217,160,0.05);border:1px solid rgba(16,217,160,0.15);border-radius:0.5rem;padding:0.75rem">
+          <p class="text-xs text-brand font-medium">On-time check-in</p>
+          <p class="text-xs text-slate-400 mt-0.5">No penalty will be charged.</p>
         </div>
-
-        <div id="noshowError" class="hidden mb-3 text-sm text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2"></div>
 
         <div class="flex gap-3">
-          <button class="btn-warn flex-1 text-sm" onclick="confirmNoshow('${bookingId}','${driverId}','${fee}')">Confirm — Charge $${fee}</button>
-          <button class="btn-ghost text-sm" onclick="closeMod('noshowModal')">Cancel</button>
+          <button class="btn-info flex-1 text-sm" id="checkinConfirmBtn" onclick="confirmCheckin('${bookingId}','${driverId}','${dateStr}','${startHH}')">Confirm Check-in</button>
+          <button class="btn-ghost text-sm" onclick="closeMod('checkinModal')">Cancel</button>
         </div>
       `;
-      document.getElementById('noshowModal').classList.add('open');
+      document.getElementById('checkinModal').classList.add('open');
+
+      // Live preview: update penalty estimate as time changes
+      document.getElementById('checkinTimeInput').addEventListener('input', function() {
+        updateCheckinPreview(this.value, startHH, endHH);
+      });
     }
 
-    async function confirmNoshow(bookingId, driverId, fee) {
-      const btn = document.querySelector('#noshowContent .btn-warn');
+    function updateCheckinPreview(selectedTime, startHH, endHH) {
+      const preview = document.getElementById('checkinPreview');
+      if (!preview) return;
+      const [sh, sm] = startHH.split(':').map(Number);
+      const [ch, cm] = selectedTime.split(':').map(Number);
+      const startMins = sh * 60 + sm;
+      const checkinMins = ch * 60 + cm;
+      const minsLate = checkinMins - startMins;
+
+      if (minsLate <= 0) {
+        preview.style.background = 'rgba(16,217,160,0.05)';
+        preview.style.borderColor = 'rgba(16,217,160,0.15)';
+        preview.innerHTML = `<p class="text-xs text-brand font-medium">On-time check-in</p><p class="text-xs text-slate-400 mt-0.5">No penalty will be charged.</p>`;
+      } else {
+        const fee = (minsLate * 0.5).toFixed(2);
+        preview.style.background = 'rgba(251,146,60,0.06)';
+        preview.style.borderColor = 'rgba(251,146,60,0.2)';
+        preview.innerHTML = `<p class="text-xs text-orange-300 font-medium">Late by ${minsLate} minute${minsLate!==1?'s':''}</p><p class="text-xs text-slate-400 mt-0.5">Late fee: <strong class="text-red-400">$${fee}</strong> ($0.50/min × ${minsLate} min)</p>`;
+      }
+    }
+
+    async function confirmCheckin(bookingId, driverId, dateStr, startHH) {
+      const timeInput = document.getElementById('checkinTimeInput');
+      const selectedTime = timeInput ? timeInput.value : startHH;
+      const checkinDatetime = `${dateStr} ${selectedTime}:00`;
+
+      const [sh, sm] = startHH.split(':').map(Number);
+      const [ch, cm] = selectedTime.split(':').map(Number);
+      const isLate = (ch * 60 + cm) > (sh * 60 + sm);
+
+      const rawBookingId = parseInt(bookingId.replace('BK-', ''));
+      const rawDriverId  = parseInt(driverId.replace('DRV-', ''));
+
+      const btn = document.getElementById('checkinConfirmBtn');
       btn.textContent = 'Processing...';
       btn.disabled = true;
 
-      // Strip display prefixes to get raw integer IDs for the API
+      if (isLate) {
+        // Late check-in → call handle-noshow composite
+        try {
+          const res = await fetch(`${HANDLE_NOSHOW_URL}/handle-noshow`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bookingID: rawBookingId,
+              driverID: rawDriverId,
+              lateCheckIn: true,
+              checkinTime: checkinDatetime,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok) {
+            showToast(`Late check-in recorded. Late fee applied. Telegram notification sent.`, 'error');
+          } else {
+            showToast(`Late check-in processed (${data.message || 'check Telegram for confirmation'})`, 'info');
+          }
+        } catch(_) {
+          showToast('Check-in submitted (service may be unreachable)', 'info');
+        }
+        const b = allBookings.find(x => x.id === bookingId);
+        if (b) b.status = 'late';
+      } else {
+        // On-time check-in → call booking service directly
+        try {
+          await fetch(`${BOOKING_URL}/booking/${rawBookingId}/checkin`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ checkinTime: checkinDatetime }),
+          });
+          showToast('Checked in successfully!', 'success');
+        } catch(_) {
+          showToast('Check-in submitted', 'success');
+        }
+        const b = allBookings.find(x => x.id === bookingId);
+        if (b) b.status = 'active';
+      }
+
+      closeMod('checkinModal');
+      renderBookings(currentTab);
+    }
+
+    // ── No-Show Confirm Modal ───────────────────────────────────
+    function openNoShowConfirmModal(bookingId, driverId) {
+      document.getElementById('noShowConfirmContent').innerHTML = `
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-white">Mark as No-Show</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Booking ${bookingId} · Driver ${driverId}</p>
+          </div>
+          <button onclick="closeMod('noShowConfirmModal')" style="color:#64748b;background:none;border:none;cursor:pointer;font-size:1.25rem;line-height:1">&#10005;</button>
+        </div>
+
+        <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:0.5rem;padding:1rem;margin-bottom:1.25rem">
+          <p class="text-sm font-semibold text-red-400 mb-2">Consequences</p>
+          <ul class="text-xs text-slate-400 space-y-1.5">
+            <li>• Driver's $5 deposit will be <strong class="text-red-400">forfeited</strong></li>
+            <li>• Driver's late/no-show count will be incremented</li>
+            <li>• After 3 incidents, driver is blocked from future bookings</li>
+            <li>• A Telegram notification will be sent to the driver</li>
+          </ul>
+        </div>
+
+        <div id="noShowError" class="hidden mb-3 text-sm text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2"></div>
+
+        <div class="flex gap-3">
+          <button class="btn-noshow flex-1 text-sm" id="noShowConfirmBtn" onclick="confirmNoShow('${bookingId}','${driverId}')">Confirm No-Show &amp; Forfeit Deposit</button>
+          <button class="btn-ghost text-sm" onclick="closeMod('noShowConfirmModal')">Cancel</button>
+        </div>
+      `;
+      document.getElementById('noShowConfirmModal').classList.add('open');
+    }
+
+    async function confirmNoShow(bookingId, driverId) {
+      const btn = document.getElementById('noShowConfirmBtn');
+      btn.textContent = 'Processing...';
+      btn.disabled = true;
+
       const rawBookingId = parseInt(bookingId.replace('BK-', ''));
       const rawDriverId  = parseInt(driverId.replace('DRV-', ''));
 
@@ -419,18 +561,31 @@
         const res = await fetch(`${HANDLE_NOSHOW_URL}/handle-noshow`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingID: rawBookingId, driverID: rawDriverId, lateCheckIn: true }),
+          body: JSON.stringify({ bookingID: rawBookingId, driverID: rawDriverId, lateCheckIn: false }),
         });
-        if(!res.ok) throw new Error();
-        showToast(`Late fee of $${fee} applied to driver ${driverId}`, 'error');
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          showToast(`No-show recorded. Deposit forfeited. Telegram notification sent.`, 'error');
+        } else {
+          showToast(`No-show processed (${data.message || 'check Telegram for confirmation'})`, 'info');
+        }
       } catch(_) {
-        showToast(`Late fee of $${fee} recorded for driver ${driverId}`, 'error');
+        showToast('No-show submitted (service may be unreachable)', 'info');
       }
 
       const b = allBookings.find(x => x.id === bookingId);
-      if(b) b.status = 'late';
-      closeMod('noshowModal');
+      if (b) { b.status = 'no_show'; b.deposit = 0; }
+      closeMod('noShowConfirmModal');
       renderBookings(currentTab);
+    }
+
+    // ── Legacy openNoshowModal (kept for active-session banner) ─
+    function openNoshowModal(bookingId, driverId) {
+      openCheckinModal(
+        bookingId, driverId,
+        allBookings.find(b=>b.id===bookingId)?.startTime?.split('T')[0] || new Date().toISOString().split('T')[0],
+        '00:00', '23:59'
+      );
     }
 
     function openCancelModal(bookingId) {

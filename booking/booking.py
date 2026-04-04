@@ -77,6 +77,12 @@ def get_booking(bookingID):
         return jsonify({"code": 200, "data": booking.json()})
     return jsonify({"code": 404, "message": "Booking not found."}), 404
 
+# get all bookings for a specific slot
+@app.route("/booking/slot/<int:slotID>")
+def get_bookings_by_slot(slotID):
+    bookings = db.session.scalars(db.select(Bookings).filter_by(slotID=slotID)).all()
+    return jsonify({"code": 200, "data": {"bookings": [b.json() for b in bookings]}})
+
 # get only uncancelled bookings for a date
 @app.route("/booking/date/<date_str>")
 def get_bookings_by_date(date_str):
@@ -170,6 +176,16 @@ def update_checkin(bookingID):
     db.session.commit()
     return jsonify({"code": 200, "data": booking.json()})
 
+
+# Update status to no_show
+@app.route("/booking/<int:bookingID>/noshow", methods=["PUT"])
+def noshow_booking(bookingID):
+    booking = db.session.scalar(db.select(Bookings).filter_by(bookingID=bookingID))
+    if not booking:
+        return jsonify({"code": 404, "message": "Booking not found."}), 404
+    booking.status = "no_show"
+    db.session.commit()
+    return jsonify({"code": 200, "data": booking.json()})
 
 # Update status to cancelled
 @app.route("/booking/<int:bookingID>/cancel", methods=["PUT"])

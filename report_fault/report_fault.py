@@ -18,6 +18,7 @@ BOOKING_URL = os.environ.get('BOOKING_URL', 'http://localhost:5002')
 PAYMENT_URL = os.environ.get('PAYMENT_URL', 'http://localhost:5003')
 NOTIFICATION_URL = os.environ.get('NOTIFICATION_URL', 'http://localhost:5004')
 STATUS_URL = os.environ.get('STATUS_URL', 'https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status')
+MAINTENANCE_CHAT_ID = os.environ.get('MAINTENANCE_CHAT_ID', '634243561')  # fallback to Caylern's chat
 
 # RabbitMQ config
 RABBITMQ_HOST = os.environ.get('RABBITMQ_HOST', 'localhost')
@@ -82,14 +83,16 @@ def report_fault():
             ticket_data = resp.json().get('data', {})
             ticket_id = ticket_data.get('ticketID')
         
-        # Publish charger.fault.reported event
+        # Publish charger.fault.reported event — also notifies maintenance team
         publish_event('charger.fault.reported', {
             'event_type': 'charger.fault.reported',
-            'booking_id': bookingID,
-            'slot_id': slotID,
-            'driver_id': driverID,
-            'description': description,
+            'driverID': MAINTENANCE_CHAT_ID,   # route to maintenance team
+            'chat_id': MAINTENANCE_CHAT_ID,
+            'type': 'fault',
+            'bookingID': bookingID,
+            'slotID': slotID,
             'ticket_id': ticket_id,
+            'message': f"[Maintenance Alert] Fault reported for Slot {slotID}. Ticket #{ticket_id} created. Description: {description}",
             'timestamp': datetime.now().isoformat()
         })
 
@@ -110,26 +113,37 @@ def report_fault():
             results.append({"step": "refund", "status": "failed", "error": str(e)})
             print(f"    ✗ Refund failed: {e}")
 
-        # Check for affected bookings (NEW STEP)
-        print(f"[4] Checking for affected bookings...")
+        # Cancel all other active/confirmed bookings for this slot and notify affected drivers
+        print(f"[4] Cancelling affected bookings for slot {slotID}...")
         try:
-            resp = requests.get(f"{BOOKING_URL}/booking?slotID={slotID}&status=upcoming", timeout=2)
+            resp = requests.get(f"{BOOKING_URL}/booking/slot/{slotID}", timeout=2)
             if resp.status_code == 200:
                 bookings_data = resp.json().get('data', {}).get('bookings', [])
-                affected_drivers = [b.get('driverID') for b in bookings_data if b.get('driverID') != driverID]
-                results.append({"step": "check_affected", "status": resp.status_code, "count": len(affected_drivers)})
-                print(f"    ✓ Found {len(affected_drivers)} affected drivers")
-                
-                if affected_drivers:
+                affected = [b for b in bookings_data
+                            if b.get('status') in ('confirmed', 'pending', 'active', 'checked-in')
+                            and str(b.get('driverID')) != str(driverID)]
+                results.append({"step": "check_affected", "status": 200, "count": len(affected)})
+                print(f"    ✓ Found {len(affected)} affected bookings")
+                for b in affected:
+                    b_id = b.get('bookingID')
+                    b_driver = b.get('driverID')
+                    try:
+                        requests.put(f"{BOOKING_URL}/booking/{b_id}/cancel", timeout=2)
+                        print(f"    ✓ Cancelled booking {b_id} for driver {b_driver}")
+                    except Exception:
+                        pass
                     publish_event('charger.fault.affected', {
                         'event_type': 'charger.fault.affected',
-                        'slot_id': slotID,
-                        'affected_drivers': affected_drivers,
+                        'driverID': b_driver,
+                        'type': 'fault',
+                        'bookingID': b_id,
+                        'slotID': slotID,
+                        'message': f"Your upcoming booking (#{b_id}) for Slot {slotID} has been cancelled — the charger is under maintenance. Please rebook another slot.",
                         'timestamp': datetime.now().isoformat()
                     })
         except Exception as e:
             results.append({"step": "check_affected", "status": "skipped", "error": str(e)})
-            print(f"    ⚠ Could not check affected bookings: {e}")
+            print(f"    ⚠ Could not cancel affected bookings: {e}")
 
         # Cancel booking
         print(f"[5] Attempting to cancel booking {bookingID}...")
@@ -141,10 +155,11 @@ def report_fault():
             if resp.status_code == 200:
                 publish_event('booking.cancelled', {
                     'event_type': 'booking.cancelled',
-                    'booking_id': bookingID,
-                    'driver_id': driverID,
-                    'slot_id': slotID,
-                    'reason': 'faulty_charger',
+                    'driverID': driverID,
+                    'type': 'fault',
+                    'bookingID': bookingID,
+                    'slotID': slotID,
+                    'message': f"Your booking (#{bookingID}) for Slot {slotID} has been cancelled due to a faulty charger. Your deposit has been refunded.",
                     'timestamp': datetime.now().isoformat()
                 })
         except requests.exceptions.ConnectionError:

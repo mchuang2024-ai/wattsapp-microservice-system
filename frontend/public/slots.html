@@ -187,6 +187,7 @@
     const VIEW_SLOTS_URL = 'http://localhost:5006';
     const MAKE_BOOKING_URL = 'http://localhost:5011';
     const DRIVER_URL = 'http://localhost:5001';
+    const MAINTENANCE_URL = 'http://localhost:5005';
 
     // Fallback slots — IDs match real DB integers so booking still works if view-slots is down
     const today = new Date().toISOString().split('T')[0];
@@ -215,22 +216,39 @@
       loadAllSlots();
     });
 
+    async function fetchFaultySlotIds() {
+      try {
+        const res = await fetch(`${MAINTENANCE_URL}/maintenance/tickets`, { signal: AbortSignal.timeout(3000) });
+        if (!res.ok) return new Set();
+        const data = await res.json();
+        const tickets = data.data?.tickets || data.tickets || (Array.isArray(data) ? data : []);
+        const faulty = new Set();
+        tickets.forEach(t => { if ((t.status || '').toUpperCase() === 'OPEN') faulty.add(String(t.slotID)); });
+        return faulty;
+      } catch(_) { return new Set(); }
+    }
+
     async function fetchSlots(params = '') {
       try {
         const date = document.getElementById('searchDate').value || new Date().toISOString().split('T')[0];
-        const res = await fetch(`${VIEW_SLOTS_URL}/view-slots?date=${date}&driverID=1${params}`);
-        if(!res.ok) throw new Error();
-        const data = await res.json();
-        return (data.slots || []).map(s => ({
-          id: s.slotID || s.id,
-          location: s.location || 'Unknown',
-          type: s.type || 'fast',
-          power: s.powerOutput || 'Unknown',
-          status: s.status || 'available',
-          deposit: s.deposit || 5,
-          startTime: s.startTime || '',
-          endTime: s.endTime || '',
-        }));
+        const [slotsRes, faultyIds] = await Promise.all([
+          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${date}&driverID=1${params}`),
+          fetchFaultySlotIds(),
+        ]);
+        if(!slotsRes.ok) throw new Error();
+        const data = await slotsRes.json();
+        return (data.slots || [])
+          .filter(s => !faultyIds.has(String(s.slotID || s.id)))  // hide faulty slots
+          .map(s => ({
+            id: s.slotID || s.id,
+            location: s.location || 'Unknown',
+            type: s.type || 'fast',
+            power: s.powerOutput || 'Unknown',
+            status: s.status || 'available',
+            deposit: s.deposit || 5,
+            startTime: s.startTime || '',
+            endTime: s.endTime || '',
+          }));
       } catch(_) { return MOCK_SLOTS; }
     }
 
@@ -254,7 +272,7 @@
       const qs = [date&&`date=${date}`,start&&`start=${start}`,end&&`end=${end}`].filter(Boolean).join('&');
       const data = await fetchSlots(qs ? '&'+qs : '');
 
-      let filtered = data.length ? data : MOCK_SLOTS;
+      let filtered = data.length ? data : MOCK_SLOTS.filter(s => s.status==='available');
       filtered = filtered.filter(s => s.status==='available');
       // Client-side time filtering
       if(start) {

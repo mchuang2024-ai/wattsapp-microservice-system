@@ -58,9 +58,10 @@ def handleNoShow():
     #1 
     if request.is_json:
         try:
-            bookingID = request.json.get("bookingID") 
-            driverID = request.json.get("driverID") 
+            bookingID = request.json.get("bookingID")
+            driverID = request.json.get("driverID")
             lateCheckIn = request.json.get("lateCheckIn")
+            checkinTimeInput = request.json.get("checkinTime")  # optional override
             
             #2
             booking, booking_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}", method='GET')
@@ -91,7 +92,10 @@ def handleNoShow():
             
             #3a
             if lateCheckIn:
-                checkinTime = { "checkinTime" : str(datetime.datetime.now()) }
+                if checkinTimeInput:
+                    checkinTime = { "checkinTime": checkinTimeInput }
+                else:
+                    checkinTime = { "checkinTime": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') }
                 updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}/checkin", method='PUT', json=checkinTime)
                     # Return error
                 if updateBookingStatus_http_status not in range(200, 300):
@@ -143,7 +147,7 @@ def handleNoShow():
 
             else:
                 # 3b.
-                updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}/cancel", method="PUT") 
+                updateBookingStatusResult, updateBookingStatus_http_status = invoke_http(f"{bookingURL}/booking/{bookingID}/noshow", method="PUT") 
 
                 if updateBookingStatus_http_status not in range(200, 300):
                     # Return error

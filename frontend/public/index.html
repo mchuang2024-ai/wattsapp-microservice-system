@@ -175,6 +175,7 @@
   <script>
     const VIEW_SLOTS_URL = 'http://localhost:5006';
     const BOOKING_URL = 'http://localhost:5002';
+    const MAINTENANCE_URL = 'http://localhost:5005';
     let allStations = [];
     let currentView = 'grid';
     let autoRefreshTimer;
@@ -208,27 +209,64 @@
       }
     }
 
+    async function fetchFaultySlotIds() {
+      try {
+        const res = await fetch(`${MAINTENANCE_URL}/maintenance/tickets`, { signal: AbortSignal.timeout(4000) });
+        if (!res.ok) return new Set();
+        const data = await res.json();
+        const tickets = data.data?.tickets || data.tickets || (Array.isArray(data) ? data : []);
+        // Collect slotIDs with any OPEN maintenance ticket
+        const faulty = new Set();
+        tickets.forEach(t => { if ((t.status || '').toUpperCase() === 'OPEN') faulty.add(String(t.slotID)); });
+        return faulty;
+      } catch(_) { return new Set(); }
+    }
+
     async function fetchStations() {
       try {
         const today = new Date().toISOString().split('T')[0];
-        const res = await fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=1`);
-        if(!res.ok) throw new Error('API error');
-        const data = await res.json();
-        // view-slots returns one row per (slotID × hour) — deduplicate to one card per charger
-        const seen = new Set();
-        return (data.slots || []).filter(s => {
-          if(seen.has(s.slotID)) return false;
-          seen.add(s.slotID);
-          return true;
-        }).map(s => ({
-          id: s.slotID || s.id,
-          location: s.location || `Charger ${s.slotID}`,
-          type: s.type || 'fast',
-          status: s.status || 'available',
-          deposit: s.deposit || 5,
-          power: s.powerOutput || 'Unknown',
-          spots: s.spots || '--',
-        }));
+        const [slotsRes, faultyIds] = await Promise.all([
+          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=1`),
+          fetchFaultySlotIds(),
+        ]);
+
+        let availableStations = [];
+        if (slotsRes.ok) {
+          const data = await slotsRes.json();
+          // view-slots returns one row per (slotID × hour) — deduplicate to one card per charger
+          const seen = new Set();
+          availableStations = (data.slots || []).filter(s => {
+            if(seen.has(s.slotID)) return false;
+            seen.add(s.slotID);
+            return true;
+          }).map(s => ({
+            id: s.slotID || s.id,
+            location: s.location || `Charger ${s.slotID}`,
+            type: s.type || 'fast',
+            status: faultyIds.has(String(s.slotID)) ? 'faulty' : (s.status || 'available'),
+            deposit: s.deposit || 5,
+            power: s.powerOutput || 'Unknown',
+            spots: s.spots || '--',
+          }));
+        }
+
+        // Add faulty-only stations (from maintenance tickets that don't appear in view-slots anymore)
+        for (const slotId of faultyIds) {
+          if (!availableStations.find(s => String(s.id) === slotId)) {
+            availableStations.push({
+              id: slotId,
+              location: `Charger ${slotId}`,
+              type: 'fast',
+              status: 'faulty',
+              deposit: 5,
+              power: '--',
+              spots: '--',
+            });
+          }
+        }
+
+        if (!availableStations.length && !faultyIds.size) return MOCK_STATIONS;
+        return availableStations;
       } catch(_) {
         return MOCK_STATIONS;
       }
@@ -274,30 +312,41 @@
       if(!list.length) { empty.classList.remove('hidden'); return; }
       empty.classList.add('hidden');
 
-      grid.innerHTML = list.map(s => `
-        <div class="card p-5 flex flex-col gap-3 hover:border-brand transition-colors duration-200" style="transition:border-color 0.2s">
+      grid.innerHTML = list.map(s => {
+        const isFaulty = s.status === 'faulty';
+        const cardBorder = isFaulty ? 'border-color:rgba(239,68,68,0.35)' : '';
+        return `
+        <div class="card p-5 flex flex-col gap-3" style="transition:border-color 0.2s;${cardBorder}">
           <div class="flex items-start justify-between">
             <div>
               <p class="text-xs text-slate-500 mb-0.5">Station ID</p>
               <p class="font-bold text-white">${s.id}</p>
+              <p class="text-xs text-slate-500 mt-0.5">${s.location}</p>
             </div>
             <span class="text-xs font-semibold px-2.5 py-1 rounded-full ${statusClass(s.status)}">${s.status.charAt(0).toUpperCase()+s.status.slice(1)}</span>
           </div>
+          ${isFaulty ? `
+          <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:0.5rem;padding:0.625rem 0.75rem">
+            <p class="text-xs text-red-400 font-medium">&#9888; Station Offline</p>
+            <p class="text-xs text-slate-500 mt-0.5">Fault reported — under maintenance</p>
+          </div>` : `
           <div class="grid grid-cols-2 gap-2 text-sm">
             <div style="background:#0f1623;border-radius:0.5rem;padding:0.5rem 0.75rem">
               <p class="text-xs text-slate-500 mb-0.5">Deposit</p>
               <p class="text-slate-200 text-xs font-medium">$${s.deposit || 5}</p>
             </div>
             <div style="background:#0f1623;border-radius:0.5rem;padding:0.5rem 0.75rem">
-              <p class="text-xs text-slate-500 mb-0.5">Spots</p>
-              <p class="text-slate-200 text-xs font-medium">${s.spots || '--'}</p>
+              <p class="text-xs text-slate-500 mb-0.5">Power</p>
+              <p class="text-slate-200 text-xs font-medium">${s.power || '--'}</p>
             </div>
-          </div>
-          <a href="slots.html?location=${encodeURIComponent(s.location)}&stationId=${s.id}" class="btn-primary text-sm text-center mt-auto ${s.status==='faulty'?'opacity-40 pointer-events-none':''}">
-            View Slots
-          </a>
+          </div>`}
+          ${isFaulty
+            ? `<button disabled class="btn-ghost text-sm text-center mt-auto opacity-40 cursor-not-allowed">Unavailable</button>`
+            : `<a href="slots.html?location=${encodeURIComponent(s.location)}&stationId=${s.id}" class="btn-primary text-sm text-center mt-auto">View Slots</a>`
+          }
         </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function applyFilters() {
