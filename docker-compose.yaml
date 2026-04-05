@@ -28,6 +28,18 @@ services:
       retries: 10
     networks:
       - esd-network
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - kong
+    restart: unless-stopped
+    networks:
+      - esd-network
 
   kong:
     image: kong:3.6
@@ -57,7 +69,7 @@ services:
       - maintenance
       - view-slots
       - make-booking
-      - handle-No-Show   
+      - handle-No-Show   # FIX 1: was "handle-noshow" → must match service name exactly
       - report-fault
     restart: unless-stopped
     networks:
