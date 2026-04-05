@@ -1,4 +1,5 @@
 #!/bin/sh
+WORKDIR /app
 # Create RabbitMQ exchange and queues
 python amqp_setup.py
 
