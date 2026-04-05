@@ -85,6 +85,7 @@
           <option value="4">Driver 4</option>
           <option value="5">Driver 5</option>
         </select>
+        <span id="lateCountBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);display:none"></span>
         <div class="pulse-dot ml-1"></div>
         <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
         <button id="refreshBtn" onclick="loadDashboard()" class="btn-ghost text-sm ml-2">Refresh</button>
@@ -187,11 +188,24 @@
     let currentView = 'grid';
     let autoRefreshTimer;
 
+    const DRIVER_URL = 'http://localhost:5001';
     function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
-    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); }
+    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); updateLateCount(); }
+
+    async function updateLateCount() {
+      const badge = document.getElementById('lateCountBadge');
+      try {
+        const res = await fetch(`${DRIVER_URL}/drivers/${getDriverID()}`);
+        const data = await res.json();
+        const count = data.data?.late_count || 0;
+        badge.textContent = `Late: ${count}`;
+        badge.style.display = count > 0 ? 'inline' : 'none';
+      } catch(_) { badge.style.display = 'none'; }
+    }
 
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('driverSelect').value = getDriverID();
+      updateLateCount();
     });
 
     // Fallback stations — IDs match real OutSystems slot IDs (integers)
