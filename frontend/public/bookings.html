@@ -329,14 +329,14 @@
         const isConfirmed = b.status === 'confirmed' || b.status === 'upcoming';
         const isActive    = b.status === 'active' || b.status === 'checked-in';
         const isLate      = b.status === 'late';
-        const canCancel   = isConfirmed;
+        const canCancel   = false;
         const canScenario2 = isConfirmed;
         const statusCls   = `status-${b.status}`;
 
         // Build time strings for check-in picker min/max
         const startHH = pad(start.getHours()) + ':' + pad(start.getMinutes());
         const endHH   = pad(end.getHours()) + ':' + pad(end.getMinutes());
-        const dateStr = start.toISOString().split('T')[0];
+        const dateStr = start.getFullYear() + '-' + pad(start.getMonth()+1) + '-' + pad(start.getDate());
 
         return `
           <tr id="row-${b.id}">
@@ -440,8 +440,9 @@
           <p class="text-xs text-slate-400 mt-0.5">No penalty will be charged.</p>
         </div>
 
+        <div id="checkinError" class="hidden mb-3 text-sm text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2"></div>
         <div class="flex gap-3">
-          <button class="btn-info flex-1 text-sm" id="checkinConfirmBtn" onclick="confirmCheckin('${bookingId}','${driverId}','${dateStr}','${startHH}')">Confirm Check-in</button>
+          <button class="btn-info flex-1 text-sm" id="checkinConfirmBtn" onclick="confirmCheckin('${bookingId}','${driverId}','${dateStr}','${startHH}','${endHH}')">Confirm Check-in</button>
           <button class="btn-ghost text-sm" onclick="closeMod('checkinModal')">Cancel</button>
         </div>
       `;
@@ -474,14 +475,33 @@
       }
     }
 
-    async function confirmCheckin(bookingId, driverId, dateStr, startHH) {
+    async function confirmCheckin(bookingId, driverId, dateStr, startHH, endHH) {
       const timeInput = document.getElementById('checkinTimeInput');
       const selectedTime = timeInput ? timeInput.value : startHH;
       const checkinDatetime = `${dateStr} ${selectedTime}:00`;
 
       const [sh, sm] = startHH.split(':').map(Number);
+      const [eh, em] = endHH.split(':').map(Number);
       const [ch, cm] = selectedTime.split(':').map(Number);
-      const isLate = (ch * 60 + cm) > (sh * 60 + sm);
+      const startMins = sh * 60 + sm;
+      const endMins = eh * 60 + em;
+      const checkinMins = ch * 60 + cm;
+
+      // Validate: check-in time must be between slot start and end
+      const errBox = document.getElementById('checkinError');
+      if (checkinMins < startMins) {
+        errBox.textContent = `Check-in time cannot be before slot start time (${startHH}).`;
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (checkinMins >= endMins) {
+        errBox.textContent = `Check-in time cannot be at or after slot end time (${endHH}).`;
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if (errBox) errBox.classList.add('hidden');
+
+      const isLate = checkinMins > startMins;
 
       const rawBookingId = parseInt(bookingId.replace('BK-', ''));
       const rawDriverId  = parseInt(driverId.replace('DRV-', ''));
@@ -505,12 +525,20 @@
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok) {
-            showToast(`Late check-in recorded. Late fee applied. Telegram notification sent.`, 'error');
+            const minsLate = checkinMins - startMins;
+            const fee = (minsLate * 0.5).toFixed(2);
+            showToast(`Late check-in recorded. ${minsLate} min(s) late — $${fee} fee charged.`, 'error');
           } else {
-            showToast(`Late check-in processed (${data.message || 'check Telegram for confirmation'})`, 'info');
+            showToast(`Late check-in failed: ${data.message || 'Unknown error'}`, 'error');
+            btn.textContent = 'Confirm Check-in';
+            btn.disabled = false;
+            return;
           }
-        } catch(_) {
-          showToast('Check-in submitted (service may be unreachable)', 'info');
+        } catch(e) {
+          showToast('Handle-noshow service unreachable', 'error');
+          btn.textContent = 'Confirm Check-in';
+          btn.disabled = false;
+          return;
         }
         const b = allBookings.find(x => x.id === bookingId);
         if (b) b.status = 'late';

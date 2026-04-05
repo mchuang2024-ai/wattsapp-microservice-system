@@ -250,7 +250,7 @@
           const errData = await slotsRes.json().catch(() => ({}));
           if (slotsRes.status === 403) {
             showToast(errData.error || 'Driver is blocked due to too many penalties.', 'error');
-            return [];
+            return { slots: [], blocked: true };
           }
           throw new Error();
         }
@@ -267,13 +267,27 @@
             startTime: s.startTime || '',
             endTime: s.endTime || '',
           }));
-      } catch(_) { return MOCK_SLOTS; }
+        return { slots: result, blocked: false };
+      } catch(_) { return { slots: MOCK_SLOTS, blocked: false }; }
+    }
+
+    function showBlockedMessage() {
+      const grid = document.getElementById('slotsGrid') || document.getElementById('stationsGrid');
+      if (grid) {
+        grid.innerHTML = `
+          <div class="col-span-full card p-8 text-center" style="border-color:rgba(239,68,68,0.3)">
+            <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+            <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
+            <p class="text-slate-500 text-sm">This driver has too many late arrivals and is blocked from booking. Please select a different driver or contact support.</p>
+          </div>`;
+      }
     }
 
     async function loadAllSlots() {
       showLoader();
-      const data = await fetchSlots();
-      renderSlots(data.length ? data : MOCK_SLOTS);
+      const result = await fetchSlots();
+      if (result.blocked) { showBlockedMessage(); return; }
+      renderSlots(result.slots.length ? result.slots : MOCK_SLOTS);
     }
 
     async function searchSlots() {
@@ -288,9 +302,10 @@
 
       showLoader();
       const qs = [date&&`date=${date}`,start&&`start=${start}`,end&&`end=${end}`].filter(Boolean).join('&');
-      const data = await fetchSlots(qs ? '&'+qs : '');
+      const result = await fetchSlots(qs ? '&'+qs : '');
+      if (result.blocked) { showBlockedMessage(); return; }
 
-      let filtered = data.length ? data : MOCK_SLOTS.filter(s => s.status==='available');
+      let filtered = result.slots.length ? result.slots : MOCK_SLOTS.filter(s => s.status==='available');
       filtered = filtered.filter(s => s.status==='available');
       // Client-side time filtering
       if(start) {

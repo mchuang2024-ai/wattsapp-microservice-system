@@ -137,6 +137,7 @@ services:
       - BOOKING_URL=http://booking:5002
       - PAYMENT_URL=http://payment:5003
       - NOTIFICATION_URL=http://notification:5004
+      - DRIVER_URL=http://driver:5001
       - STATUS_URL=https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672

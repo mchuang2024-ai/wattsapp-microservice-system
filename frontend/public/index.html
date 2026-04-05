@@ -254,6 +254,7 @@
         if (!slotsRes.ok && slotsRes.status === 403) {
           const errData = await slotsRes.json().catch(() => ({}));
           showToast(errData.error || 'Driver is blocked due to too many penalties.', 'error');
+          return { stations: [], blocked: true };
         }
         if (slotsRes.ok) {
           const data = await slotsRes.json();
@@ -282,10 +283,10 @@
           }
         });
 
-        if (!availableStations.length) return MOCK_STATIONS;
-        return availableStations;
+        if (!availableStations.length) return { stations: MOCK_STATIONS, blocked: false };
+        return { stations: availableStations, blocked: false };
       } catch(_) {
-        return MOCK_STATIONS;
+        return { stations: MOCK_STATIONS, blocked: false };
       }
     }
 
@@ -294,11 +295,21 @@
       document.getElementById('stationsGrid').innerHTML = '';
       document.getElementById('stationsEmpty').classList.add('hidden');
 
-      const data = await fetchStations();
-      allStations = data.length ? data : MOCK_STATIONS;
-
-      updateStats(allStations);
-      renderStations(allStations);
+      const result = await fetchStations();
+      if (result.blocked) {
+        allStations = [];
+        updateStats([]);
+        document.getElementById('stationsGrid').innerHTML = `
+          <div class="col-span-full card p-8 text-center" style="border-color:rgba(239,68,68,0.3)">
+            <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+            <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
+            <p class="text-slate-500 text-sm">This driver has too many late arrivals and is blocked from booking. Please select a different driver or contact support.</p>
+          </div>`;
+      } else {
+        allStations = result.stations;
+        updateStats(allStations);
+        renderStations(allStations);
+      }
       document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
       document.getElementById('stationsLoader').classList.add('hidden');
     }

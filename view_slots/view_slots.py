@@ -57,7 +57,7 @@ def view_slots():
         target_date = datetime.strptime(date, '%Y-%m-%d').date()
         
         for slot_id in available_slot_ids:
-            for hour in range(24):
+            for hour in range(23):
                 start_time = datetime.combine(target_date, datetime.min.time()).replace(hour=hour)
                 end_time = start_time + timedelta(hours=1)
                 

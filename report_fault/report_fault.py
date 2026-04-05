@@ -61,6 +61,16 @@ def report_fault():
 
     results = []
 
+    # Look up reporting driver's chat_id for notifications
+    DRIVER_URL = os.environ.get('DRIVER_URL', 'http://localhost:5001')
+    reporter_chat_id = None
+    try:
+        driver_resp = requests.get(f"{DRIVER_URL}/drivers/{driverID}", timeout=3)
+        if driver_resp.status_code == 200:
+            reporter_chat_id = driver_resp.json().get('data', {}).get('telegram_chat_id')
+    except Exception:
+        pass
+
     try:
         # Mark charger as faulty
         print(f"[1] Updating slot {slotID} to faulty...")
@@ -171,12 +181,13 @@ def report_fault():
             results.append({"step": "cancel_booking", "status": "failed", "error": str(e)})
             print(f"    ✗ Cancellation failed: {e}")
 
-        # Send notification
+        # Send notification to reporting driver
         print(f"[6] Attempting to send notification to driver {driverID}...")
         try:
             resp = requests.post(f"{NOTIFICATION_URL}/notification/send", json={
                 "driverID": driverID,
-                "message": "Your booking was cancelled due to faulty charger.",
+                "chat_id": reporter_chat_id or MAINTENANCE_CHAT_ID,
+                "message": f"Your booking (#{bookingID}) for Slot {slotID} has been cancelled due to a faulty charger. Your deposit refund has been initiated.",
                 "type": "fault"
             }, timeout=2)
             results.append({"step": "notify", "status": resp.status_code})
