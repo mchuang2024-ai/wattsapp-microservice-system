@@ -192,10 +192,10 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const VIEW_SLOTS_URL = 'http://localhost:8000';
+    const VIEW_SLOTS_URL = 'http://localhost:8000/view-slots';
     const MAKE_BOOKING_URL = 'http://localhost:8000/make-booking';
-    const DRIVER_URL = 'http://localhost:8000';
-    const MAINTENANCE_URL = 'http://localhost:8000';
+    const DRIVER_URL = 'http://localhost:8000/drivers';
+    const MAINTENANCE_URL = 'http://localhost:8000/maintenance';
 
     function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
     function setDriverID(id) { localStorage.setItem('selectedDriverID', id); updateLateCount(); if(typeof loadAllSlots==='function') loadAllSlots(); }

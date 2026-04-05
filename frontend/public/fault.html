@@ -211,11 +211,11 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const REPORT_FAULT_URL = 'http://localhost:8000';
+    const REPORT_FAULT_URL = 'http://localhost:8000/reportfault';
     let sessionActive = false;
     let recentFaults = [];
 
-    const DRIVER_SVC_URL = 'http://localhost:8000';
+    const DRIVER_SVC_URL = 'http://localhost:8000/drivers';
     function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
     function setDriverID(id) { localStorage.setItem('selectedDriverID', id); updateLateCount(); }
 
