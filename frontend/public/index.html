@@ -177,14 +177,14 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const VIEW_SLOTS_URL = 'http://localhost:5006';
-    const BOOKING_URL = 'http://localhost:5002';
-    const MAINTENANCE_URL = 'http://localhost:5005';
+    const VIEW_SLOTS_URL = 'http://localhost:8000';
+    const BOOKING_URL = 'http://localhost:8000';
+    const MAINTENANCE_URL = 'http://localhost:8000';
     let allStations = [];
     let currentView = 'grid';
     let autoRefreshTimer;
 
-    const DRIVER_URL = 'http://localhost:5001';
+    const DRIVER_URL = 'http://localhost:8000';
     function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
     function setDriverID(id) { localStorage.setItem('selectedDriverID', id); updateLateCount(); }
 
