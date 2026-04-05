@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EV Charge Hub - My Bookings</title>
+  <title>WattsApp - My Bookings</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -84,7 +84,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
       <div class="flex items-center gap-3">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        <span class="text-lg font-bold text-white">EV Charge Hub</span>
+        <span class="text-lg font-bold text-white">WattsApp</span>
       </div>
       <nav class="hidden sm:flex items-center gap-1">
         <a href="index.html"    class="nav-link">Dashboard</a>
@@ -93,7 +93,14 @@
         <a href="fault.html"    class="nav-link">Report Fault</a>
       </nav>
       <div class="flex items-center gap-2">
-        <div class="pulse-dot"></div>
+        <select id="driverSelect" class="input-field text-xs" style="width:110px;padding:0.3rem 0.5rem" onchange="setDriverID(this.value);loadBookings()">
+          <option value="1">Driver 1</option>
+          <option value="2">Driver 2</option>
+          <option value="3">Driver 3</option>
+          <option value="4">Driver 4</option>
+          <option value="5">Driver 5</option>
+        </select>
+        <div class="pulse-dot ml-1"></div>
         <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
       </div>
     </div>
@@ -148,13 +155,17 @@
       </div>
     </div>
 
-    <!-- Tabs -->
-    <div style="background:#0d1520;border-radius:0.625rem;padding:0.25rem;display:inline-flex;gap:0.25rem" class="mb-6">
-      <button class="tab-btn active" onclick="filterTab('all')"        id="tab-all">All</button>
-      <button class="tab-btn"        onclick="filterTab('confirmed')"   id="tab-confirmed">Confirmed</button>
-      <button class="tab-btn"        onclick="filterTab('active')"      id="tab-active">Active</button>
-      <button class="tab-btn"        onclick="filterTab('completed')"   id="tab-completed">Completed</button>
-      <button class="tab-btn"        onclick="filterTab('cancelled')"   id="tab-cancelled">Cancelled</button>
+    <!-- Status filter -->
+    <div class="flex items-center gap-3 mb-6">
+      <label class="text-xs text-slate-400 whitespace-nowrap">Filter by Status:</label>
+      <select id="statusFilter" class="input-field text-sm" style="width:160px" onchange="renderBookings()">
+        <option value="all">All</option>
+        <option value="upcoming">Upcoming</option>
+        <option value="checked-in">Checked-in</option>
+        <option value="no_show">No Show</option>
+        <option value="cancelled">Cancelled</option>
+        <option value="late">Late</option>
+      </select>
     </div>
 
     <div id="bookingsLoader" class="flex justify-center py-16 hidden"><div class="spinner"></div></div>
@@ -209,11 +220,19 @@
     const BOOKING_URL = 'http://localhost:5002';
     const HANDLE_NOSHOW_URL = 'http://localhost:5100';
     const DRIVER_URL = 'http://localhost:5001';
+    const NOTIFICATION_URL = 'http://localhost:5004';
     let allBookings = [];
     let activeBookingId = null;
     let countdownInterval = null;
     let lateFeeInterval = null;
-    let currentTab = 'all';
+
+    function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
+    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('driverSelect').value = getDriverID();
+      document.getElementById('driverFilter').value = getDriverID();
+    });
 
     const now = new Date();
     const fmtDate = d => d.toISOString().split('T')[0];
@@ -251,6 +270,10 @@
       document.getElementById('bookingsTableWrap').classList.add('hidden');
       document.getElementById('bookingsEmpty').classList.add('hidden');
 
+      const selectedDriver = getDriverID();
+      document.getElementById('driverSelect').value = selectedDriver;
+      document.getElementById('driverFilter').value = selectedDriver;
+
       try {
         const res = await fetch(`${BOOKING_URL}/booking`);
         if(!res.ok) throw new Error();
@@ -274,18 +297,12 @@
       }
 
       checkActiveSession();
-      renderBookings(currentTab);
+      renderBookings();
       document.getElementById('bookingsLoader').classList.add('hidden');
     }
 
-    function filterTab(tab) {
-      currentTab = tab;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('tab-'+tab).classList.add('active');
-      renderBookings(tab);
-    }
-
-    function renderBookings(tab) {
+    function renderBookings() {
+      const tab = document.getElementById('statusFilter').value || 'all';
       const dFilter = document.getElementById('driverFilter').value.trim().toLowerCase();
       let list = allBookings.filter(b => {
         if(tab !== 'all' && b.status !== tab) return false;
@@ -313,8 +330,7 @@
         const isActive    = b.status === 'active' || b.status === 'checked-in';
         const isLate      = b.status === 'late';
         const canCancel   = isConfirmed;
-        const canFault    = isConfirmed || isActive || isLate || b.status === 'completed';
-        const canScenario2 = isConfirmed || isActive || isLate;
+        const canScenario2 = isConfirmed;
         const statusCls   = `status-${b.status}`;
 
         // Build time strings for check-in picker min/max
@@ -342,9 +358,8 @@
                   <button class="btn-info" onclick="openCheckinModal('${b.id}','${b.driverID}','${dateStr}','${startHH}','${endHH}')">Check-in</button>
                   <button class="btn-noshow" onclick="openNoShowConfirmModal('${b.id}','${b.driverID}')">No Show</button>
                 ` : ''}
-                ${canFault ? `<a href="fault.html?bookingId=${b.id}&slotId=${b.slotID}&driverId=${b.driverID}" class="btn-ghost">Report Fault</a>` : ''}
                 ${canCancel ? `<button class="btn-danger" onclick="openCancelModal('${b.id}')">Cancel</button>` : ''}
-                ${b.status==='completed'||b.status==='cancelled'||b.status==='no_show' ? `<span class="text-xs text-slate-600">—</span>` : ''}
+                ${!canScenario2 && !canCancel ? `<span class="text-xs text-slate-600">—</span>` : ''}
               </div>
             </td>
           </tr>
@@ -507,6 +522,22 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ checkinTime: checkinDatetime }),
           });
+          // Send Telegram notification for check-in
+          try {
+            const driverRes = await fetch(`${DRIVER_URL}/drivers/${rawDriverId}`);
+            const driverData = driverRes.ok ? await driverRes.json() : {};
+            const chatId = driverData.data?.telegram_chat_id;
+            await fetch(`${NOTIFICATION_URL}/notification/send`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                driverID: rawDriverId,
+                chat_id: chatId,
+                message: `You have successfully checked in for booking #${rawBookingId}. Enjoy your charging session with WattsApp!`,
+                type: 'checkin'
+              }),
+            });
+          } catch(_) {}
           showToast('Checked in successfully!', 'success');
         } catch(_) {
           showToast('Check-in submitted', 'success');
@@ -516,7 +547,7 @@
       }
 
       closeMod('checkinModal');
-      renderBookings(currentTab);
+      renderBookings();
     }
 
     // ── No-Show Confirm Modal ───────────────────────────────────
@@ -577,7 +608,7 @@
       const b = allBookings.find(x => x.id === bookingId);
       if (b) { b.status = 'no_show'; b.deposit = 0; }
       closeMod('noShowConfirmModal');
-      renderBookings(currentTab);
+      renderBookings();
     }
 
     // ── Legacy openNoshowModal (kept for active-session banner) ─
@@ -619,7 +650,7 @@
       if(b) { b.status = 'cancelled'; b.deposit = 0; }
 
       closeMod('cancelModal');
-      renderBookings(currentTab);
+      renderBookings();
       showToast(`Booking ${bookingId} has been cancelled.`, 'info');
     }
 
@@ -628,7 +659,7 @@
       if(b) openNoshowModal(bookingId, b.driverID);
     }
 
-    document.getElementById('driverFilter').addEventListener('input', () => renderBookings(currentTab));
+    document.getElementById('driverFilter').addEventListener('input', () => renderBookings());
 
     loadBookings();
   </script>

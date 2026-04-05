@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EV Charge Hub - Report Fault</title>
+  <title>WattsApp - Report Fault</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -49,7 +49,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
       <div class="flex items-center gap-3">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        <span class="text-lg font-bold text-white">EV Charge Hub</span>
+        <span class="text-lg font-bold text-white">WattsApp</span>
       </div>
       <nav class="hidden sm:flex items-center gap-1">
         <a href="index.html"    class="nav-link">Dashboard</a>
@@ -58,7 +58,14 @@
         <a href="fault.html"    class="nav-link active">Report Fault</a>
       </nav>
       <div class="flex items-center gap-2">
-        <div class="pulse-dot"></div>
+        <select id="driverSelect" class="input-field text-xs" style="width:110px;padding:0.3rem 0.5rem" onchange="setDriverID(this.value)">
+          <option value="1">Driver 1</option>
+          <option value="2">Driver 2</option>
+          <option value="3">Driver 3</option>
+          <option value="4">Driver 4</option>
+          <option value="5">Driver 5</option>
+        </select>
+        <div class="pulse-dot ml-1"></div>
         <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
       </div>
     </div>
@@ -139,7 +146,7 @@
           <label class="field-label" for="faultDesc">Description <span class="text-red-400">*</span></label>
           <textarea id="faultDesc" placeholder="Describe the fault in detail — what happened, when it occurred, and any error codes shown..." class="input-field"></textarea>
           <div class="flex justify-between mt-1">
-            <p class="field-error" id="err-desc">Description must be at least 20 characters.</p>
+            <p class="field-error" id="err-desc">Description is required.</p>
             <p class="text-xs text-slate-600 ml-auto" id="charCount">0 / 500</p>
           </div>
         </div>
@@ -163,7 +170,6 @@
         <div class="flex flex-col sm:flex-row gap-3 mt-2">
           <button id="submitBtn" onclick="submitFault()" class="btn-primary flex-1">Submit Fault Report</button>
           <button type="button" onclick="resetForm()" class="btn-ghost">Clear Form</button>
-          <a href="bookings.html" class="btn-ghost text-center">Back to Bookings</a>
         </div>
       </div>
     </div>
@@ -208,12 +214,17 @@
     let sessionActive = false;
     let recentFaults = [];
 
+    function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
+    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); }
+
     // Pre-fill from URL params
     window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('driverSelect').value = getDriverID();
       const p = new URLSearchParams(window.location.search);
       if(p.get('bookingId')) document.getElementById('faultBookingId').value = p.get('bookingId');
       if(p.get('slotId'))    document.getElementById('faultSlotId').value    = p.get('slotId');
       if(p.get('driverId'))  document.getElementById('faultDriverId').value  = p.get('driverId');
+      else document.getElementById('faultDriverId').value = getDriverID();
       loadRecentReports();
     });
 
@@ -265,7 +276,7 @@
       valid = setFieldError('faultSlotId',    'err-slotId',    !slotId)    && valid;
       valid = setFieldError('faultDriverId',  'err-driverId',  !driverId)  && valid;
       valid = setFieldError('faultType',      'err-faultType', !faultType) && valid;
-      valid = setFieldError('faultDesc',      'err-desc',      desc.length < 20) && valid;
+      valid = setFieldError('faultDesc',      'err-desc',      !desc) && valid;
 
       return valid;
     }

@@ -34,7 +34,7 @@ def publish_booking_created(booking_id, slot_id, driver_id):
     params = {
         'driverID': driver_id,
         'chat_id': str(chat_id) if chat_id else None,
-        'message': f'Your booking #{booking_id} at slot {slot_id} has been confirmed! Thank you for using PulsePark.',
+        'message': f'Your booking #{booking_id} at slot {slot_id} has been confirmed! Thank you for using WattsApp.',
         'type': 'booking',
         'bookingID': booking_id,
         'slotID': slot_id,

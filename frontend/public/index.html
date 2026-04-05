@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EV Charge Hub - Dashboard</title>
+  <title>WattsApp - Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -69,7 +69,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
       <div class="flex items-center gap-3">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        <span class="text-lg font-bold text-white">EV Charge Hub</span>
+        <span class="text-lg font-bold text-white">WattsApp</span>
       </div>
       <nav class="hidden sm:flex items-center gap-1">
         <a href="index.html" class="nav-link active">Dashboard</a>
@@ -78,7 +78,14 @@
         <a href="fault.html"    class="nav-link">Report Fault</a>
       </nav>
       <div class="flex items-center gap-2">
-        <div class="pulse-dot"></div>
+        <select id="driverSelect" class="input-field text-xs" style="width:110px;padding:0.3rem 0.5rem" onchange="setDriverID(this.value);loadDashboard()">
+          <option value="1">Driver 1</option>
+          <option value="2">Driver 2</option>
+          <option value="3">Driver 3</option>
+          <option value="4">Driver 4</option>
+          <option value="5">Driver 5</option>
+        </select>
+        <div class="pulse-dot ml-1"></div>
         <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
         <button id="refreshBtn" onclick="loadDashboard()" class="btn-ghost text-sm ml-2">Refresh</button>
       </div>
@@ -180,6 +187,13 @@
     let currentView = 'grid';
     let autoRefreshTimer;
 
+    function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
+    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('driverSelect').value = getDriverID();
+    });
+
     // Fallback stations — IDs match real OutSystems slot IDs (integers)
     const MOCK_STATIONS = [
       { id:1, location:'Sengkang Hub', type:'fast', status:'available', deposit:5, power:'50kW',  spots:4 },
@@ -212,25 +226,35 @@
     async function fetchFaultySlotIds() {
       try {
         const res = await fetch(`${MAINTENANCE_URL}/maintenance/tickets`, { signal: AbortSignal.timeout(4000) });
-        if (!res.ok) return new Set();
+        if (!res.ok) return { faultySet: new Set(), ticketMap: {} };
         const data = await res.json();
         const tickets = data.data?.tickets || data.tickets || (Array.isArray(data) ? data : []);
-        // Collect slotIDs with any OPEN maintenance ticket
-        const faulty = new Set();
-        tickets.forEach(t => { if ((t.status || '').toUpperCase() === 'OPEN') faulty.add(String(t.slotID)); });
-        return faulty;
-      } catch(_) { return new Set(); }
+        const faultySet = new Set();
+        const ticketMap = {};
+        tickets.forEach(t => {
+          if ((t.status || '').toUpperCase() === 'OPEN') {
+            faultySet.add(String(t.slotID));
+            ticketMap[String(t.slotID)] = t.ticketID;
+          }
+        });
+        return { faultySet, ticketMap };
+      } catch(_) { return { faultySet: new Set(), ticketMap: {} }; }
     }
 
     async function fetchStations() {
       try {
         const today = new Date().toISOString().split('T')[0];
-        const [slotsRes, faultyIds] = await Promise.all([
-          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=3`),
+        const driverID = getDriverID();
+        const [slotsRes, { faultySet, ticketMap }] = await Promise.all([
+          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${today}&driverID=${driverID}`),
           fetchFaultySlotIds(),
         ]);
 
         let availableStations = [];
+        if (!slotsRes.ok && slotsRes.status === 403) {
+          const errData = await slotsRes.json().catch(() => ({}));
+          showToast(errData.error || 'Driver is blocked due to too many penalties.', 'error');
+        }
         if (slotsRes.ok) {
           const data = await slotsRes.json();
           // view-slots returns one row per (slotID × hour) — deduplicate to one card per charger
@@ -243,12 +267,20 @@
             id: s.slotID || s.id,
             location: s.location || `Charger ${s.slotID}`,
             type: s.type || 'fast',
-            status: faultyIds.has(String(s.slotID)) ? 'faulty' : (s.status || 'available'),
+            status: faultySet.has(String(s.slotID)) ? 'faulty' : (s.status || 'available'),
             deposit: s.deposit || 5,
             power: s.powerOutput || 'Unknown',
             spots: s.spots || '--',
+            ticketID: ticketMap[String(s.slotID)] || null,
           }));
         }
+
+        // Also include any faulty slots not in available list
+        Object.entries(ticketMap).forEach(([slotID, ticketID]) => {
+          if (!availableStations.find(s => String(s.id) === slotID)) {
+            availableStations.push({ id: parseInt(slotID), location: `Charger ${slotID}`, type: 'fast', status: 'faulty', deposit: 5, power: '--', spots: '--', ticketID });
+          }
+        });
 
         if (!availableStations.length) return MOCK_STATIONS;
         return availableStations;
@@ -326,12 +358,33 @@
             </div>
           </div>`}
           ${isFaulty
-            ? `<button disabled class="btn-ghost text-sm text-center mt-auto opacity-40 cursor-not-allowed">Unavailable</button>`
+            ? `<div class="flex gap-2 mt-auto">
+                <button disabled class="btn-ghost text-sm flex-1 opacity-40 cursor-not-allowed">Unavailable</button>
+                ${s.ticketID ? `<button onclick="resolveStation(${s.ticketID},${s.id})" class="btn-ghost text-sm" style="border-color:rgba(16,217,160,0.4);color:#10d9a0">Mark Resolved</button>` : ''}
+               </div>`
             : `<a href="slots.html?location=${encodeURIComponent(s.location)}&stationId=${s.id}" class="btn-primary text-sm text-center mt-auto">View Slots</a>`
           }
         </div>
         `;
       }).join('');
+    }
+
+    async function resolveStation(ticketID, slotID) {
+      try {
+        const res = await fetch(`${MAINTENANCE_URL}/maintenance/ticket/${ticketID}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'RESOLVED' }),
+        });
+        if (res.ok) {
+          showToast(`Station ${slotID} marked as resolved.`, 'success');
+          loadDashboard();
+        } else {
+          showToast('Failed to resolve station.', 'error');
+        }
+      } catch(_) {
+        showToast('Could not reach maintenance service.', 'error');
+      }
     }
 
     function applyFilters() {

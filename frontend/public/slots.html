@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EV Charge Hub - Find Slots</title>
+  <title>WattsApp - Find Slots</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -73,7 +73,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
       <div class="flex items-center gap-3">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        <span class="text-lg font-bold text-white">EV Charge Hub</span>
+        <span class="text-lg font-bold text-white">WattsApp</span>
       </div>
       <nav class="hidden sm:flex items-center gap-1">
         <a href="index.html"    class="nav-link">Dashboard</a>
@@ -82,7 +82,14 @@
         <a href="fault.html"    class="nav-link">Report Fault</a>
       </nav>
       <div class="flex items-center gap-2">
-        <div class="pulse-dot"></div>
+        <select id="driverSelect" class="input-field text-xs" style="width:110px;padding:0.3rem 0.5rem" onchange="setDriverID(this.value)">
+          <option value="1">Driver 1</option>
+          <option value="2">Driver 2</option>
+          <option value="3">Driver 3</option>
+          <option value="4">Driver 4</option>
+          <option value="5">Driver 5</option>
+        </select>
+        <div class="pulse-dot ml-1"></div>
         <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
       </div>
     </div>
@@ -189,6 +196,9 @@
     const DRIVER_URL = 'http://localhost:5001';
     const MAINTENANCE_URL = 'http://localhost:5005';
 
+    function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
+    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); if(typeof loadAllSlots==='function') loadAllSlots(); }
+
     // Fallback slots — IDs match real DB integers so booking still works if view-slots is down
     const today = new Date().toISOString().split('T')[0];
     const MOCK_SLOTS = [
@@ -213,6 +223,7 @@
       document.getElementById('searchDate').value = today;
       document.getElementById('searchStart').value = '09:00';
       document.getElementById('searchEnd').value   = '11:00';
+      document.getElementById('driverSelect').value = getDriverID();
       loadAllSlots();
     });
 
@@ -232,10 +243,17 @@
       try {
         const date = document.getElementById('searchDate').value || new Date().toISOString().split('T')[0];
         const [slotsRes, faultyIds] = await Promise.all([
-          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${date}&driverID=1${params}`),
+          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${date}&driverID=${getDriverID()}${params}`),
           fetchFaultySlotIds(),
         ]);
-        if(!slotsRes.ok) throw new Error();
+        if (!slotsRes.ok) {
+          const errData = await slotsRes.json().catch(() => ({}));
+          if (slotsRes.status === 403) {
+            showToast(errData.error || 'Driver is blocked due to too many penalties.', 'error');
+            return [];
+          }
+          throw new Error();
+        }
         const data = await slotsRes.json();
         return (data.slots || [])
           .filter(s => !faultyIds.has(String(s.slotID || s.id)))  // hide faulty slots
@@ -389,7 +407,7 @@
         <div class="flex flex-col gap-3">
           <div>
             <label class="block text-xs text-slate-400 mb-1">Driver ID <span class="text-red-400">*</span></label>
-            <input type="number" id="bkDriverId" placeholder="e.g. 1" value="1" class="input-field text-sm" />
+            <input type="number" id="bkDriverId" placeholder="e.g. 1" value="${getDriverID()}" class="input-field text-sm" />
           </div>
           <div>
             <label class="block text-xs text-slate-400 mb-1">Charger ID</label>
