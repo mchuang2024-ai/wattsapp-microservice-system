@@ -232,7 +232,7 @@ services:
   make-booking:
     build:
       context: .
-      dockerfile: Make_booking/Dockerfile
+      dockerfile: Make_Booking/Dockerfile
     image: wattsapp/make-booking
     container_name: make-booking
     ports:
