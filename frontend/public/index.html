@@ -147,10 +147,6 @@
             <option value="faulty">Faulty</option>
           </select>
         </div>
-        <div>
-          <label class="block text-xs text-slate-400 mb-1">Max Deposit: $<span id="priceLabel">20</span></label>
-          <input type="range" min="5" max="50" value="20" step="5" id="filterPrice" class="range-slider mt-2" oninput="document.getElementById('priceLabel').textContent=this.value" />
-        </div>
       </div>
       <div class="flex gap-2 mt-4">
         <button class="btn-primary text-sm" onclick="applyFilters()">Apply Filters</button>
@@ -304,22 +300,36 @@
       }
     }
 
+    async function checkDriverBlocked() {
+      try {
+        const res = await fetch(`${DRIVER_URL}/drivers/${getDriverID()}`);
+        const data = await res.json();
+        return (data.data?.late_count || 0) >= 5;
+      } catch(_) { return false; }
+    }
+
+    function showDriverBlocked(container) {
+      container.innerHTML = `
+        <div class="col-span-full card p-8 text-center" style="border-color:rgba(239,68,68,0.3)">
+          <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+          <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
+          <p class="text-slate-500 text-sm">This driver has too many late arrivals (5+) and is blocked from booking. Please select a different driver or contact support.</p>
+        </div>`;
+    }
+
     async function loadDashboard() {
       document.getElementById('stationsLoader').classList.remove('hidden');
       document.getElementById('stationsGrid').innerHTML = '';
       document.getElementById('stationsEmpty').classList.add('hidden');
 
-      const result = await fetchStations();
-      if (result.blocked) {
+      updateLateCount();
+
+      if (await checkDriverBlocked()) {
         allStations = [];
         updateStats([]);
-        document.getElementById('stationsGrid').innerHTML = `
-          <div class="col-span-full card p-8 text-center" style="border-color:rgba(239,68,68,0.3)">
-            <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-            <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
-            <p class="text-slate-500 text-sm">This driver has too many late arrivals and is blocked from booking. Please select a different driver or contact support.</p>
-          </div>`;
+        showDriverBlocked(document.getElementById('stationsGrid'));
       } else {
+        const result = await fetchStations();
         allStations = result.stations;
         updateStats(allStations);
         renderStations(allStations);

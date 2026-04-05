@@ -284,6 +284,14 @@
       } catch(_) { return { slots: MOCK_SLOTS, blocked: false }; }
     }
 
+    async function checkDriverBlocked() {
+      try {
+        const res = await fetch(`${DRIVER_URL}/drivers/${getDriverID()}`);
+        const data = await res.json();
+        return (data.data?.late_count || 0) >= 5;
+      } catch(_) { return false; }
+    }
+
     function showBlockedMessage() {
       document.getElementById('slotsLoader').classList.add('hidden');
       document.getElementById('slotsTableWrap').classList.add('hidden');
@@ -291,12 +299,14 @@
       empty.innerHTML = `
         <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
         <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
-        <p class="text-slate-500 text-sm">This driver has too many late arrivals and is blocked from booking. Please select a different driver or contact support.</p>`;
+        <p class="text-slate-500 text-sm">This driver has too many late arrivals (5+) and is blocked from booking. Please select a different driver or contact support.</p>`;
       empty.classList.remove('hidden');
     }
 
     async function loadAllSlots() {
       showLoader();
+      updateLateCount();
+      if (await checkDriverBlocked()) { showBlockedMessage(); return; }
       const result = await fetchSlots();
       if (result.blocked) { showBlockedMessage(); return; }
       renderSlots(result.slots.length ? result.slots : MOCK_SLOTS);
