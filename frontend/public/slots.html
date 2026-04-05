@@ -255,7 +255,7 @@
           throw new Error();
         }
         const data = await slotsRes.json();
-        return (data.slots || [])
+        const result = (data.slots || [])
           .filter(s => !faultyIds.has(String(s.slotID || s.id)))  // hide faulty slots
           .map(s => ({
             id: s.slotID || s.id,
@@ -272,15 +272,14 @@
     }
 
     function showBlockedMessage() {
-      const grid = document.getElementById('slotsGrid') || document.getElementById('stationsGrid');
-      if (grid) {
-        grid.innerHTML = `
-          <div class="col-span-full card p-8 text-center" style="border-color:rgba(239,68,68,0.3)">
-            <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
-            <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
-            <p class="text-slate-500 text-sm">This driver has too many late arrivals and is blocked from booking. Please select a different driver or contact support.</p>
-          </div>`;
-      }
+      document.getElementById('slotsLoader').classList.add('hidden');
+      document.getElementById('slotsTableWrap').classList.add('hidden');
+      const empty = document.getElementById('slotsEmpty');
+      empty.innerHTML = `
+        <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+        <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
+        <p class="text-slate-500 text-sm">This driver has too many late arrivals and is blocked from booking. Please select a different driver or contact support.</p>`;
+      empty.classList.remove('hidden');
     }
 
     async function loadAllSlots() {
