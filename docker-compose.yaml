@@ -1,21 +1,69 @@
 networks:
-  esd-network:                # key must be esd-network
+  esd-network:
     driver: bridge
     name: esd-network
+
+volumes:
+  wattsapp_rabbitmq_data:
+
 services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: wattsapp-rabbit
     ports:
       - "5672:5672"
-      - "15673:15672"         # Management UI on http://localhost:15672
+      - "15673:15672"       # Management UI → http://<vm-ip>:15673
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: password123
     volumes:
       - wattsapp_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - esd-network
+
+  kong:
+    image: kong:3.6
+    container_name: kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      # FIX 5: changed from localhost → VM IP so browser can reach Kong Manager
+      KONG_ADMIN_GUI_URL: "http://213.35.115.213:8002"
+      KONG_ADMIN_GUI_LISTEN: "0.0.0.0:8002"
+    ports:
+      - "8000:8000"     # Kong proxy — all client traffic goes here
+      - "8001:8001"     # Kong admin API
+      - "8002:8002"     # Kong Manager UI
+    volumes:
+      - ./kong/kong.yml:/kong/kong.yml
+    depends_on:
+      - driver
+      - booking
+      - payment
+      - notification
+      - maintenance
+      - view-slots
+      - make-booking
+      - handle-No-Show   
+      - report-fault
+    restart: unless-stopped
+    networks:
+      - esd-network
+
+  # ── Atomic Services ─────────────────────────────────────────────────
 
   driver:
     build:
@@ -24,7 +72,7 @@ services:
     image: wattsapp/driver
     container_name: driver
     ports:
-      - "5001:5001"            # changed from 5011 → 5001
+      - "5001:5001"
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/driver
     networks:
@@ -51,13 +99,8 @@ services:
     container_name: payment
     ports:
       - "5003:5003"
-    # depends_on:
-    #   - rabbitmq
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/payment
-      # - RABBITMQ_HOST=rabbitmq
-      # - RABBITMQ_USER=admin
-      # - RABBITMQ_PASS=password123
     networks:
       - esd-network
 
@@ -69,13 +112,14 @@ services:
     container_name: notification
     ports:
       - "5004:5004"
-    depends_on:
-      - rabbitmq
     environment:
       - dbURL=mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/notification
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=admin
       - RABBITMQ_PASS=password123
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - esd-network
 
@@ -92,6 +136,8 @@ services:
     networks:
       - esd-network
 
+  # ── Composite Services ───────────────────────────────────────────────
+
   view-slots:
     build:
       context: .
@@ -104,12 +150,12 @@ services:
       - DRIVER_URL=http://driver:5001
       - BOOKING_URL=http://booking:5002
       - OUTSYSTEMS_BASE_URL=https://personal-dftp1xlj.outsystemscloud.com/Status/rest/Status
-    networks:
-      - esd-network
     depends_on:
       - driver
       - booking
-      
+    networks:
+      - esd-network
+
   report-fault:
     build:
       context: .
@@ -127,14 +173,19 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=admin
       - RABBITMQ_PASS=password123
+    depends_on:
+      maintenance:
+        condition: service_started
+      booking:
+        condition: service_started
+      payment:
+        condition: service_started
+      notification:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - esd-network
-    depends_on:
-      - maintenance
-      - booking
-      - payment
-      - notification
-      - rabbitmq
 
   handle-No-Show:
     build:
@@ -154,33 +205,37 @@ services:
       - EXCHANGE_TYPE=topic
       - RABBIT_USERNAME=admin
       - RABBIT_PASSWORD=password123
+    depends_on:
+      driver:
+        condition: service_started
+      booking:
+        condition: service_started
+      payment:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - esd-network
-    depends_on:
-      - driver
-      - booking
-      - payment
-      - rabbitmq
-      
+
   make-booking:
     build:
       context: .
       dockerfile: Make_booking/Dockerfile
     image: wattsapp/make-booking
     container_name: make-booking
-    environment:
-      - PAYMENT_URL=http://payment:5002/payment/hold
-      - BOOKING_URL=http://booking:5003/bookings
-      - RABBITMQ_URL=amqp://admin:password123@rabbitmq:5672/%2F
     ports:
       - "5011:5011"
+    environment:
+      # FIX 4: URLs were swapped — payment is 5003, booking is 5002
+      - PAYMENT_URL=http://payment:5003/payment/hold
+      - BOOKING_URL=http://booking:5002/booking
+      - RABBITMQ_URL=amqp://admin:password123@rabbitmq:5672/%2F
     depends_on:
-      - payment
-      - booking
-      - rabbitmq
+      payment:
+        condition: service_started
+      booking:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - esd-network
-volumes:
-  wattsapp_rabbitmq_data:
-
-  
