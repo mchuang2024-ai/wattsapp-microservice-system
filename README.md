@@ -16,11 +16,6 @@ Across all scenarios, our solution showcases HTTP and AMQP communication, Docker
 ------------------------------------------------------------------------------------------------------------------------------------
 
 How to use:
-1) download the zip file or git clone into an appropriate location
-2) install requirements in https.reqs.txt
-3) run microservice file (python file) in each folder
-
-Alternatively:
-1) run docker
-2) open the folder where "docker-compose.yaml" is located
-3) run the compose file with "docker compose up" or "docker compose up -d"
+1) download and extract the zip file, or git clone into an appropriate location
+2) run docker
+3) run docker compose at the folder location
