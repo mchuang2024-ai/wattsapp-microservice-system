@@ -12,6 +12,7 @@ We cover 3 user scenarios:
 3. Report Faulty Charger - in the event of a spoiled charger, users are able to file a report manually and the system will inform all the stakeholders involved automatically
    
 Across all scenarios, our solution showcases HTTP and AMQP communication, Docker Compose deployment, service reuse (Payment service reused 4 times), orchestration, and Beyond-the-Labs features including delayed AMQP messaging and the Telegram Bot API.
+
 ------------------------------------------------------------------------------------------------------------------------------------
 
 How to use:
