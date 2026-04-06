@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 # DATABASE CONFIG (Railway)
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    os.environ.get('DATABASE_URL',
+    os.environ.get('dbURL',
     'mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/maintenance')
 )
 

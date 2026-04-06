@@ -14,7 +14,7 @@ app = Flask(__name__)
 # Railway MySQL connection
 # Format: mysql+mysqlconnector://user:password@host:port/database
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    os.environ.get('DATABASE_URL',
+    os.environ.get('dbURL',
     'mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/notification')
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
