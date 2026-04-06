@@ -13,3 +13,8 @@ scrape_configs:
     static_configs:
       - targets:
           - kong:8001
+  - job_name: 'esd-microservices'
+    static_configs:
+      - targets: ['172.18.0.1:9100']
+        labels:
+          app: 'node-exporter'

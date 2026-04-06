@@ -28,6 +28,7 @@ services:
       retries: 10
     networks:
       - esd-network
+    command: python3 amqp_setup.py
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
