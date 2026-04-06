@@ -1,12 +1,12 @@
-// API Configuration - Update this to point to your backend
-// When running locally, use localhost with exposed ports from docker-compose
-// When running inside Docker, set NEXT_PUBLIC_* env vars to use service names
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5011';
-const BOOKING_SERVICE_URL = process.env.NEXT_PUBLIC_BOOKING_URL || 'http://localhost:5002';
-const DRIVER_SERVICE_URL = process.env.NEXT_PUBLIC_DRIVER_URL || 'http://localhost:5001';
-const VIEW_SLOTS_SERVICE_URL = process.env.NEXT_PUBLIC_VIEW_SLOTS_URL || 'http://localhost:5006';
-const HANDLE_NOSHOW_URL = process.env.NEXT_PUBLIC_HANDLE_NOSHOW_URL || 'http://localhost:5100';
-const REPORT_FAULT_URL = process.env.NEXT_PUBLIC_REPORT_FAULT_URL || 'http://localhost:5010';
+// API Configuration - All requests are routed through Kong (default: localhost:8000).
+// Override via NEXT_PUBLIC_* env vars (must be set as Docker build args so Next.js
+// can embed them in the client bundle at build time).
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BOOKING_SERVICE_URL = process.env.NEXT_PUBLIC_BOOKING_URL || 'http://localhost:8000';
+const DRIVER_SERVICE_URL = process.env.NEXT_PUBLIC_DRIVER_URL || 'http://localhost:8000';
+const VIEW_SLOTS_SERVICE_URL = process.env.NEXT_PUBLIC_VIEW_SLOTS_URL || 'http://localhost:8000';
+const HANDLE_NOSHOW_URL = process.env.NEXT_PUBLIC_HANDLE_NOSHOW_URL || 'http://localhost:8000';
+const REPORT_FAULT_URL = process.env.NEXT_PUBLIC_REPORT_FAULT_URL || 'http://localhost:8000';
 
 // Types
 export interface ChargingSlot {

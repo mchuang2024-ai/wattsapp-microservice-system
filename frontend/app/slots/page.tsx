@@ -44,6 +44,8 @@ const mockLocations = ["Downtown Mall", "City Center", "Shopping District", "Hig
 function SlotsPageContent() {
   const searchParams = useSearchParams();
   const preselectedSlotId = searchParams.get("slotId");
+  // driverId can be passed as a URL query param (?driverId=123); defaults to "1"
+  const driverId = searchParams.get("driverId") || "1";
   
   const [slots, setSlots] = useState<ChargingSlot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +64,7 @@ function SlotsPageContent() {
       const data = await fetchSlotsByFilter({
         location: filters.location && filters.location !== "all" ? filters.location : undefined,
         date: filters.date || new Date().toISOString().split("T")[0],
-        driverId: "1",
+        driverId,
         startTime: filters.startTime || undefined,
         endTime: filters.endTime || undefined,
       });

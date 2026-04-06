@@ -9,7 +9,7 @@ CORS(app)  # Allow frontend access
 
 
 # Railway MySQL connection (replace with your vars)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or \
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('dbURL') or \
     "mysql+mysqlconnector://root:jpPOaVCbCXnTWjDOBzPtDoRKYwqqiClR@caboose.proxy.rlwy.net:45033/driver"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_recycle': 299}

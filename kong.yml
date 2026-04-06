@@ -10,6 +10,7 @@ services:
         paths:
           - /drivers
           - /driver
+        strip_path: false
 
   - name: booking-service
     url: http://booking:5002
@@ -17,6 +18,7 @@ services:
       - name: booking-route
         paths:
           - /booking
+        strip_path: false
 
   - name: payment-service
     url: http://payment:5003
@@ -24,6 +26,7 @@ services:
       - name: payment-route
         paths:
           - /payment
+        strip_path: false
 
   - name: notification-service
     url: http://notification:5004
@@ -31,6 +34,7 @@ services:
       - name: notification-route
         paths:
           - /notification
+        strip_path: false
 
   - name: maintenance-service
     url: http://maintenance:5005
@@ -38,6 +42,7 @@ services:
       - name: maintenance-route
         paths:
           - /maintenance
+        strip_path: false
 
   - name: view-slots-service
     url: http://view-slots:5006
@@ -45,6 +50,7 @@ services:
       - name: view-slots-route
         paths:
           - /view-slots
+        strip_path: false
 
   - name: report-fault-service
     url: http://report-fault:5010
@@ -52,14 +58,19 @@ services:
       - name: report-fault-route
         paths:
           - /reportfault
+        strip_path: false
+      - name: report-fault-health-route
+        paths:
           - /health
+        strip_path: false
 
   - name: make-booking-service
     url: http://make-booking:5011
     routes:
       - name: make-booking-route
         paths:
-          - /make-booking
+          - /create-booking
+        strip_path: false
 
   - name: handle-noshow-service
     url: http://handle-No-Show:5100
@@ -67,6 +78,7 @@ services:
       - name: handle-noshow-route
         paths:
           - /handle-noshow
+        strip_path: false
 
 plugins:
   - name: prometheus
