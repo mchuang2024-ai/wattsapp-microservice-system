@@ -19,3 +19,5 @@ How to use:
 1) download and extract the zip file, or git clone into an appropriate location
 2) run docker
 3) run docker compose at the folder location
+4) run "amqp_setup.py" file in rabbitmq folder
+5) run docker compose up again 
