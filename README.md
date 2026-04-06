@@ -12,3 +12,14 @@ We cover 3 user scenarios:
 3. Report Faulty Charger - in the event of a spoiled charger, users are able to file a report manually and the system will inform all the stakeholders involved automatically
    
 Across all scenarios, our solution showcases HTTP and AMQP communication, Docker Compose deployment, service reuse (Payment service reused 4 times), orchestration, and Beyond-the-Labs features including delayed AMQP messaging and the Telegram Bot API.
+------------------------------------------------------------------------------------------------------------------------------------
+
+How to use:
+1) download the zip file or git clone into an appropriate location
+2) install requirements in https.reqs.txt
+3) run microservice file (python file) in each folder
+
+Alternatively:
+1) run docker
+2) open the folder where "docker-compose.yaml" is located
+3) run the compose file with "docker compose up" or "docker compose up -d"
