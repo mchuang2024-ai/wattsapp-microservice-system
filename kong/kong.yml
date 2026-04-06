@@ -1,0 +1,80 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+
+  - name: driver-service
+    url: http://driver:5001
+    routes:
+      - name: driver-route
+        paths:
+          - /drivers
+          - /driver
+
+  - name: booking-service
+    url: http://booking:5002
+    routes:
+      - name: booking-route
+        paths:
+          - /booking
+
+  - name: payment-service
+    url: http://payment:5003
+    routes:
+      - name: payment-route
+        paths:
+          - /payment
+
+  - name: notification-service
+    url: http://notification:5004
+    routes:
+      - name: notification-route
+        paths:
+          - /notification
+
+  - name: maintenance-service
+    # FIX 3: was missing entirely
+    url: http://maintenance:5005
+    routes:
+      - name: maintenance-route
+        paths:
+          - /maintenance
+
+  - name: view-slots-service
+    url: http://view-slots:5006
+    routes:
+      - name: view-slots-route
+        paths:
+          - /view-slots
+
+  - name: report-fault-service
+    url: http://report-fault:5010
+    routes:
+      - name: report-fault-route
+        paths:
+          - /reportfault
+          - /health
+
+  - name: make-booking-service
+    # FIX 2: was "create-booking:5011" → correct container is "make-booking:5011"
+    url: http://make-booking:5011
+    routes:
+      - name: make-booking-route
+        paths:
+          - /make-booking
+
+  - name: handle-noshow-service
+    # FIX 1: container name is "handle-No-Show" — use the Docker internal DNS name
+    url: http://handle-No-Show:5100
+    routes:
+      - name: handle-noshow-route
+        paths:
+          - /handle-noshow
+
+plugins:
+  - name: prometheus
+    config:
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+      upstream_health_metrics: true

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WattsApp - Find Slots</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#10d9a0', dark: '#0ba87a', light: '#6effd8' },
+            accent: '#22d3ee',
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { background-color: #0f1623; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+    .status-available { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+    .status-faulty    { background:rgba(239,68,68,0.15);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+    .status-occupied  { background:rgba(251,146,60,0.15); color:#fb923c; border:1px solid rgba(251,146,60,0.3); }
+    .card { background:#151f2e; border:1px solid #1e2d40; border-radius:0.75rem; }
+    .btn-primary { background:#10d9a0; color:#0f1623; font-weight:600; border-radius:0.5rem; padding:0.5rem 1.25rem; transition:background 0.2s; cursor:pointer; border:none; }
+    .btn-primary:hover { background:#0ba87a; }
+    .btn-ghost { background:transparent; color:#94a3b8; border:1px solid #1e2d40; border-radius:0.5rem; padding:0.5rem 1.25rem; transition:all 0.2s; cursor:pointer; }
+    .btn-ghost:hover { border-color:#10d9a0; color:#10d9a0; }
+    .btn-danger { background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.3); border-radius:0.5rem; padding:0.4rem 0.875rem; font-size:0.8rem; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .btn-danger:hover { background:rgba(239,68,68,0.2); }
+    .input-field { background:#0f1623; border:1px solid #1e2d40; border-radius:0.5rem; color:#e2e8f0; padding:0.5rem 0.75rem; width:100%; transition:border-color 0.2s; }
+    .input-field:focus { outline:none; border-color:#10d9a0; }
+    .input-field option { background:#151f2e; }
+    .spinner { border:3px solid #1e2d40; border-top-color:#10d9a0; border-radius:50%; width:36px; height:36px; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .pulse-dot { width:8px; height:8px; background:#10d9a0; border-radius:50%; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+    .nav-link { color:#94a3b8; padding:0.5rem 0.875rem; border-radius:0.5rem; font-size:0.875rem; font-weight:500; transition:all 0.2s; text-decoration:none; }
+    .nav-link:hover,.nav-link.active { color:#10d9a0; background:rgba(16,217,160,0.1); }
+    .toast { position:fixed; bottom:1.5rem; right:1.5rem; z-index:9999; padding:0.875rem 1.25rem; border-radius:0.625rem; font-size:0.875rem; font-weight:500; min-width:260px; box-shadow:0 8px 32px rgba(0,0,0,0.4); transform:translateY(100px); opacity:0; transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1); }
+    .toast.show { transform:translateY(0); opacity:1; }
+    .toast.success { background:rgba(16,217,160,0.15); color:#10d9a0; border:1px solid rgba(16,217,160,0.3); }
+    .toast.error   { background:rgba(239,68,68,0.15);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+    .toast.info    { background:rgba(34,211,238,0.15); color:#22d3ee; border:1px solid rgba(34,211,238,0.3); }
+    /* Modal */
+    .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(4px); opacity:0; pointer-events:none; transition:opacity 0.2s; }
+    .modal-bg.open { opacity:1; pointer-events:all; }
+    .modal-box { background:#151f2e; border:1px solid #1e2d40; border-radius:1rem; padding:1.75rem; width:100%; max-width:480px; transform:scale(0.95); transition:transform 0.2s; }
+    .modal-bg.open .modal-box { transform:scale(1); }
+    /* Table */
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:#0d1520; color:#64748b; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; padding:0.75rem 1rem; text-align:left; }
+    thead th:first-child { border-radius:0.5rem 0 0 0; }
+    thead th:last-child  { border-radius:0 0.5rem 0 0; }
+    tbody tr { border-bottom:1px solid #1e2d40; transition:background 0.15s; }
+    tbody tr:hover { background:rgba(255,255,255,0.02); }
+    tbody td { padding:0.875rem 1rem; font-size:0.875rem; color:#cbd5e1; }
+    /* Telegram mock */
+    .tg-msg { background:#1a2535; border-left:3px solid #22d3ee; border-radius:0.5rem; padding:0.875rem 1rem; font-size:0.8rem; color:#94a3b8; }
+    .tg-msg strong { color:#22d3ee; }
+    /* Penalty badge */
+    .penalty-badge { display:inline-flex; align-items:center; gap:4px; background:rgba(239,68,68,0.12); color:#f87171; border:1px solid rgba(239,68,68,0.25); border-radius:9999px; font-size:0.7rem; font-weight:600; padding:2px 10px; }
+    .success-checkmark { width:56px; height:56px; background:rgba(16,217,160,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Nav -->
+  <header style="background:#0d1520; border-bottom:1px solid #1e2d40;" class="sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span class="text-lg font-bold text-white">WattsApp</span>
+      </div>
+      <nav class="hidden sm:flex items-center gap-1">
+        <a href="index.html"    class="nav-link">Dashboard</a>
+        <a href="slots.html"    class="nav-link active">Find Slots</a>
+        <a href="bookings.html" class="nav-link">My Bookings</a>
+        <a href="fault.html"    class="nav-link">Report Fault</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <select id="driverSelect" class="input-field text-xs" style="width:110px;padding:0.3rem 0.5rem" onchange="setDriverID(this.value)">
+          <option value="1">Driver 1</option>
+          <option value="2">Driver 2</option>
+          <option value="3">Driver 3</option>
+          <option value="4">Driver 4</option>
+          <option value="5">Driver 5</option>
+        </select>
+        <span id="lateCountBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);display:none"></span>
+        <div class="pulse-dot ml-1"></div>
+        <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
+      </div>
+    </div>
+    <div class="sm:hidden flex gap-1 px-4 pb-2 overflow-x-auto">
+      <a href="index.html"    class="nav-link whitespace-nowrap">Dashboard</a>
+      <a href="slots.html"    class="nav-link active whitespace-nowrap">Find Slots</a>
+      <a href="bookings.html" class="nav-link whitespace-nowrap">My Bookings</a>
+      <a href="fault.html"    class="nav-link whitespace-nowrap">Report Fault</a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-white">Find Available Slots</h1>
+      <p class="text-slate-400 text-sm mt-1">Search and book an EV charging slot</p>
+    </div>
+
+    <!-- Search form -->
+    <div class="card p-5 mb-8">
+      <h2 class="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">Search Slots</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Date</label>
+          <input type="date" id="searchDate" class="input-field text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Start Time</label>
+          <input type="time" id="searchStart" class="input-field text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">End Time</label>
+          <input type="time" id="searchEnd" class="input-field text-sm" />
+        </div>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button class="btn-primary text-sm" onclick="searchSlots()">Search Slots</button>
+        <button class="btn-ghost text-sm" onclick="loadAllSlots()">Show All</button>
+      </div>
+    </div>
+
+    <!-- Driver penalty check -->
+    <div class="card p-5 mb-8">
+      <h2 class="text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wide">Driver Penalty Check</h2>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="flex-1">
+          <label class="block text-xs text-slate-400 mb-1">Driver ID</label>
+          <input type="text" id="driverCheckId" placeholder="e.g. DRV-1042" class="input-field text-sm" />
+        </div>
+        <div class="flex items-end">
+          <button class="btn-ghost text-sm" onclick="checkPenalty()">Check Score</button>
+        </div>
+        <div id="penaltyResult" class="hidden flex items-center gap-2 text-sm"></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-white">Available Slots <span id="slotsCount" class="text-slate-500 text-sm font-normal"></span></h2>
+      <button onclick="loadAllSlots()" class="text-xs text-slate-400 hover:text-brand transition-colors flex items-center gap-1">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        Refresh
+      </button>
+    </div>
+
+    <div id="slotsLoader" class="flex justify-center py-16 hidden"><div class="spinner"></div></div>
+    <div id="slotsEmpty" class="card p-12 text-center text-slate-500 hidden">
+      <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10H3M16 6l-4-4-4 4M8 18l4 4 4-4"/></svg>
+      No slots found. Try adjusting your search.
+    </div>
+    <div id="slotsTableWrap" class="card overflow-hidden hidden">
+      <div class="overflow-x-auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Slot ID</th>
+              <th>Start Time</th>
+              <th>End Time</th>
+              <th>Status</th>
+              <th>Deposit</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="slotsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Booking Modal -->
+  <div id="bookingModal" class="modal-bg" onclick="closeModal(event)">
+    <div class="modal-box">
+      <div id="modalContent">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const VIEW_SLOTS_URL = 'http://localhost:8000/view-slots';
+    const MAKE_BOOKING_URL = 'http://localhost:8000/make-booking';
+    const DRIVER_URL = 'http://localhost:8000/drivers';
+    const MAINTENANCE_URL = 'http://localhost:8000/maintenance';
+
+    function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
+    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); updateLateCount(); if(typeof loadAllSlots==='function') loadAllSlots(); }
+
+    async function updateLateCount() {
+      const badge = document.getElementById('lateCountBadge');
+      try {
+        const res = await fetch(`${DRIVER_URL}/drivers/${getDriverID()}`);
+        const data = await res.json();
+        const count = data.data?.late_count || 0;
+        badge.textContent = `Late: ${count}`;
+        badge.style.display = count > 0 ? 'inline' : 'none';
+      } catch(_) { badge.style.display = 'none'; }
+    }
+
+    // Fallback slots — IDs match real DB integers so booking still works if view-slots is down
+    const today = new Date().toISOString().split('T')[0];
+    const MOCK_SLOTS = [
+      { id:1, location:'Sengkang Hub',  type:'fast', power:'50kW',  status:'available', deposit:5, startTime:`${today} 09:00:00`, endTime:`${today} 10:00:00` },
+      { id:2, location:'Tampines Hub',  type:'fast', power:'50kW',  status:'available', deposit:5, startTime:`${today} 09:00:00`, endTime:`${today} 10:00:00` },
+      { id:3, location:'Jurong Hub',    type:'fast', power:'50kW',  status:'available', deposit:5, startTime:`${today} 09:00:00`, endTime:`${today} 10:00:00` },
+    ];
+
+    let selectedSlot = null;
+
+    function showToast(msg, type='info') {
+      const t = document.getElementById('toast');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    // Pre-fill from URL params
+    window.addEventListener('DOMContentLoaded', () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('searchDate').value = today;
+      document.getElementById('searchStart').value = '09:00';
+      document.getElementById('searchEnd').value   = '11:00';
+      document.getElementById('driverSelect').value = getDriverID();
+      updateLateCount();
+      loadAllSlots();
+    });
+
+    async function fetchFaultySlotIds() {
+      try {
+        const res = await fetch(`${MAINTENANCE_URL}/maintenance/tickets`, { signal: AbortSignal.timeout(3000) });
+        if (!res.ok) return new Set();
+        const data = await res.json();
+        const tickets = data.data?.tickets || data.tickets || (Array.isArray(data) ? data : []);
+        const faulty = new Set();
+        tickets.forEach(t => { if ((t.status || '').toUpperCase() === 'OPEN') faulty.add(String(t.slotID)); });
+        return faulty;
+      } catch(_) { return new Set(); }
+    }
+
+    async function fetchSlots(params = '') {
+      try {
+        const date = document.getElementById('searchDate').value || new Date().toISOString().split('T')[0];
+        const [slotsRes, faultyIds] = await Promise.all([
+          fetch(`${VIEW_SLOTS_URL}/view-slots?date=${date}&driverID=${getDriverID()}${params}`),
+          fetchFaultySlotIds(),
+        ]);
+        if (!slotsRes.ok) {
+          const errData = await slotsRes.json().catch(() => ({}));
+          if (slotsRes.status === 403) {
+            showToast(errData.error || 'Driver is blocked due to too many penalties.', 'error');
+            return { slots: [], blocked: true };
+          }
+          throw new Error();
+        }
+        const data = await slotsRes.json();
+        const result = (data.slots || [])
+          .filter(s => !faultyIds.has(String(s.slotID || s.id)))  // hide faulty slots
+          .map(s => ({
+            id: s.slotID || s.id,
+            location: s.location || 'Unknown',
+            type: s.type || 'fast',
+            power: s.powerOutput || 'Unknown',
+            status: s.status || 'available',
+            deposit: s.deposit || 5,
+            startTime: s.startTime || '',
+            endTime: s.endTime || '',
+          }));
+        return { slots: result, blocked: false };
+      } catch(_) { return { slots: MOCK_SLOTS, blocked: false }; }
+    }
+
+    async function checkDriverBlocked() {
+      try {
+        const res = await fetch(`${DRIVER_URL}/drivers/${getDriverID()}`);
+        const data = await res.json();
+        return (data.data?.late_count || 0) >= 5;
+      } catch(_) { return false; }
+    }
+
+    function showBlockedMessage() {
+      document.getElementById('slotsLoader').classList.add('hidden');
+      document.getElementById('slotsTableWrap').classList.add('hidden');
+      const empty = document.getElementById('slotsEmpty');
+      empty.innerHTML = `
+        <svg class="mx-auto mb-3" width="40" height="40" fill="none" stroke="#f87171" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+        <p class="text-red-400 font-semibold mb-1">Driver Blocked</p>
+        <p class="text-slate-500 text-sm">This driver has too many late arrivals (5+) and is blocked from booking. Please select a different driver or contact support.</p>`;
+      empty.classList.remove('hidden');
+    }
+
+    async function loadAllSlots() {
+      showLoader();
+      updateLateCount();
+      if (await checkDriverBlocked()) { showBlockedMessage(); return; }
+      const result = await fetchSlots();
+      if (result.blocked) { showBlockedMessage(); return; }
+      renderSlots(result.slots.length ? result.slots : MOCK_SLOTS);
+    }
+
+    async function searchSlots() {
+      const date  = document.getElementById('searchDate').value;
+      const start = document.getElementById('searchStart').value;
+      const end   = document.getElementById('searchEnd').value;
+
+      if(start && end && start >= end) {
+        showToast('End time must be after start time', 'error');
+        return;
+      }
+
+      showLoader();
+      const qs = [date&&`date=${date}`,start&&`start=${start}`,end&&`end=${end}`].filter(Boolean).join('&');
+      const result = await fetchSlots(qs ? '&'+qs : '');
+      if (result.blocked) { showBlockedMessage(); return; }
+
+      let filtered = result.slots.length ? result.slots : MOCK_SLOTS.filter(s => s.status==='available');
+      filtered = filtered.filter(s => s.status==='available');
+      // Client-side time filtering
+      if(start) {
+        filtered = filtered.filter(s => {
+          const slotStart = (s.startTime || '').split(' ')[1];
+          return slotStart && slotStart.slice(0,5) >= start;
+        });
+      }
+      if(end) {
+        filtered = filtered.filter(s => {
+          const slotEnd = (s.endTime || '').split(' ')[1];
+          return slotEnd && slotEnd.slice(0,5) <= end;
+        });
+      }
+      renderSlots(filtered);
+    }
+
+    function showLoader() {
+      document.getElementById('slotsLoader').classList.remove('hidden');
+      document.getElementById('slotsTableWrap').classList.add('hidden');
+      document.getElementById('slotsEmpty').classList.add('hidden');
+    }
+
+    function statusClass(s) {
+      if(s==='available') return 'status-available';
+      if(s==='faulty')    return 'status-faulty';
+      return 'status-occupied';
+    }
+
+    function renderSlots(slots) {
+      document.getElementById('slotsLoader').classList.add('hidden');
+      const count = document.getElementById('slotsCount');
+      count.textContent = `(${slots.length})`;
+
+      if(!slots.length) {
+        document.getElementById('slotsEmpty').classList.remove('hidden');
+        document.getElementById('slotsTableWrap').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('slotsEmpty').classList.add('hidden');
+      document.getElementById('slotsTableWrap').classList.remove('hidden');
+
+      const body = document.getElementById('slotsTableBody');
+      body.innerHTML = slots.map(s => `
+        <tr>
+          <td class="font-mono font-semibold text-white">${s.id}</td>
+          <td class="text-slate-300 text-xs">${s.startTime || '--'}</td>
+          <td class="text-slate-300 text-xs">${s.endTime || '--'}</td>
+          <td><span class="text-xs font-semibold px-2.5 py-1 rounded-full ${statusClass(s.status)}">${s.status.charAt(0).toUpperCase()+s.status.slice(1)}</span></td>
+          <td class="font-semibold text-white">$${s.deposit||5}</td>
+          <td>
+            ${s.status==='available'
+              ? `<button class="btn-primary text-xs px-3 py-1.5" onclick="openBookingModal(${JSON.stringify(s).replace(/"/g,'&quot;')})">Book</button>`
+              : `<span class="text-slate-600 text-xs">Unavailable</span>`
+            }
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function checkPenalty() {
+      const id = document.getElementById('driverCheckId').value.trim();
+      if(!id) { showToast('Enter a Driver ID', 'error'); return; }
+
+      const result = document.getElementById('penaltyResult');
+      result.innerHTML = `<div class="spinner" style="width:20px;height:20px;border-width:2px"></div>`;
+      result.classList.remove('hidden');
+
+      try {
+        const res = await fetch(`${DRIVER_URL}/drivers/${encodeURIComponent(id)}`);
+        const data = await res.json();
+        const count = data.lateCount || data.count || 0;
+        const blocked = count >= 3;
+        result.innerHTML = blocked
+          ? `<span class="penalty-badge">Blocked — ${count} late incidents</span>`
+          : `<span style="background:rgba(16,217,160,0.12);color:#10d9a0;border:1px solid rgba(16,217,160,0.25)" class="text-xs font-semibold px-3 py-1 rounded-full">Clear — ${count} late incidents</span>`;
+      } catch(_) {
+        const mockCount = Math.floor(Math.random()*3);
+        const blocked   = mockCount >= 3;
+        result.innerHTML = blocked
+          ? `<span class="penalty-badge">Blocked — ${mockCount} late incidents</span>`
+          : `<span style="background:rgba(16,217,160,0.12);color:#10d9a0;border:1px solid rgba(16,217,160,0.25)" class="text-xs font-semibold px-3 py-1 rounded-full">Clear — ${mockCount} late incidents</span>`;
+      }
+    }
+
+    function openBookingModal(slot) {
+      selectedSlot = slot;
+      // Extract date and times from slot's startTime/endTime (format: "2026-04-02 10:00:00")
+      const slotDate = slot.startTime ? slot.startTime.split(' ')[0] : new Date().toISOString().split('T')[0];
+      const slotStart = slot.startTime ? slot.startTime.split(' ')[1]?.slice(0,5) : '10:00';
+      const slotEnd = slot.endTime ? slot.endTime.split(' ')[1]?.slice(0,5) : '12:00';
+      const today = slotDate;
+      document.getElementById('modalContent').innerHTML = `
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-white">Book Slot</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Fill in your details to confirm booking</p>
+          </div>
+          <button onclick="closeModal()" style="color:#64748b;background:none;border:none;cursor:pointer;font-size:1.25rem;line-height:1">&#10005;</button>
+        </div>
+
+        <div style="background:#0f1623;border-radius:0.625rem;padding:0.875rem;margin-bottom:1.25rem" class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 mb-0.5">Slot ID</p>
+            <p class="font-bold text-white">${slot.id}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 mb-0.5">Deposit</p>
+            <p class="text-sm text-slate-200">$${slot.deposit||5}</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Driver ID <span class="text-red-400">*</span></label>
+            <input type="number" id="bkDriverId" placeholder="e.g. 1" value="${getDriverID()}" class="input-field text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Charger ID</label>
+            <input type="text" id="bkChargerId" class="input-field text-sm" value="${slot.id}" readonly style="opacity:0.6;cursor:not-allowed" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Date</label>
+              <input type="date" id="bkDate" class="input-field text-sm" value="${today}" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Start Time</label>
+              <input type="time" id="bkStart" class="input-field text-sm" value="${slotStart}" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">End Time</label>
+            <input type="time" id="bkEnd" class="input-field text-sm" value="${slotEnd}" />
+          </div>
+          <div style="background:rgba(16,217,160,0.06);border:1px solid rgba(16,217,160,0.2);border-radius:0.5rem;padding:0.75rem" class="flex items-center justify-between">
+            <span class="text-sm text-slate-400">Deposit Required</span>
+            <span class="font-bold text-white">$${slot.deposit || 5}</span>
+          </div>
+        </div>
+
+        <div id="bkError" class="hidden mt-3 text-sm text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2"></div>
+
+        <div class="flex gap-3 mt-5">
+          <button class="btn-primary flex-1 text-sm" onclick="submitBooking()">Confirm Booking</button>
+          <button class="btn-ghost text-sm" onclick="closeModal()">Cancel</button>
+        </div>
+      `;
+      document.getElementById('bookingModal').classList.add('open');
+    }
+
+    function closeModal(e) {
+      if(!e || e.target === document.getElementById('bookingModal')) {
+        document.getElementById('bookingModal').classList.remove('open');
+      }
+    }
+
+    async function submitBooking() {
+      const driverId  = document.getElementById('bkDriverId').value.trim();
+      const chargerId = document.getElementById('bkChargerId').value.trim();
+      const date      = document.getElementById('bkDate').value;
+      const start     = document.getElementById('bkStart').value;
+      const end       = document.getElementById('bkEnd').value;
+      const errBox    = document.getElementById('bkError');
+
+      if(!driverId||!chargerId||!date||!start||!end) {
+        errBox.textContent = 'All fields are required.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      if(start >= end) {
+        errBox.textContent = 'End time must be after start time.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+      errBox.classList.add('hidden');
+
+      const btn = document.querySelector('#modalContent .btn-primary');
+      btn.textContent = 'Booking...';
+      btn.disabled = true;
+
+      const payload = {
+        driverID: parseInt(driverId) || driverId,
+        chargerID: parseInt(chargerId) || chargerId,
+        slotID: selectedSlot.id,
+        starttime: `${date}T${start}:00`,
+        endtime:   `${date}T${end}:00`,
+        deposit:   selectedSlot.deposit || 5,
+      };
+
+      try {
+        const res = await fetch(`${MAKE_BOOKING_URL}/create-booking`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if(res.status === 403) {
+          throw new Error(data.message || 'Driver is blocked due to penalty score.');
+        }
+        if(!res.ok) throw new Error(data.error || data.message || `Booking failed (${res.status}).`);
+        showBookingSuccess(payload, data.bookingID || `BK-${Date.now().toString().slice(-6)}`);
+      } catch(err) {
+        btn.textContent = 'Confirm Booking';
+        btn.disabled = false;
+        if(err.message.includes('blocked')||err.message.includes('penalty')) {
+          showBookingBlocked(err.message);
+        } else {
+          errBox.textContent = err.message || 'Booking failed. Please check services are running.';
+          errBox.classList.remove('hidden');
+        }
+      }
+    }
+
+    function showBookingSuccess(payload, bookingId) {
+      document.getElementById('modalContent').innerHTML = `
+        <div class="text-center">
+          <div class="success-checkmark">
+            <svg width="26" height="26" fill="none" stroke="#10d9a0" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h2 class="text-xl font-bold text-white mb-1">Booking Confirmed!</h2>
+          <p class="text-slate-400 text-sm mb-5">Your slot has been successfully reserved.</p>
+          <div style="background:#0f1623;border-radius:0.75rem;padding:1rem;margin-bottom:1.25rem" class="text-left grid grid-cols-2 gap-2 text-sm">
+            <div><p class="text-xs text-slate-500 mb-0.5">Booking ID</p><p class="font-bold text-white">${bookingId}</p></div>
+            <div><p class="text-xs text-slate-500 mb-0.5">Slot</p><p class="font-semibold text-slate-200">${selectedSlot.id}</p></div>
+            <div><p class="text-xs text-slate-500 mb-0.5">Driver</p><p class="text-slate-200">${payload.driverID}</p></div>
+            <div><p class="text-xs text-slate-500 mb-0.5">Deposit</p><p class="font-semibold text-white">$${payload.deposit}</p></div>
+            <div class="col-span-2"><p class="text-xs text-slate-500 mb-0.5">Time</p><p class="text-slate-200">${payload.starttime.replace('T',' ')} — ${payload.endtime.split('T')[1]}</p></div>
+          </div>
+          <div class="tg-msg text-left mb-5">
+            <strong>Telegram Notification Sent</strong><br/>
+            Hi ${payload.driverID}, your booking <strong>${bookingId}</strong> at ${selectedSlot.location || 'Slot ' + selectedSlot.id} is confirmed.<br/>
+            Start: ${payload.starttime.replace('T',' ')} | Deposit: $${payload.deposit}
+          </div>
+          <div class="flex gap-3">
+            <a href="bookings.html" class="btn-primary flex-1 text-sm text-center">View My Bookings</a>
+            <button class="btn-ghost text-sm" onclick="closeModal()">Close</button>
+          </div>
+        </div>
+      `;
+      loadAllSlots();
+    }
+
+    function showBookingBlocked(msg) {
+      document.getElementById('modalContent').innerHTML = `
+        <div class="text-center">
+          <div style="width:56px;height:56px;background:rgba(239,68,68,0.12);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+            <svg width="26" height="26" fill="none" stroke="#f87171" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <h2 class="text-xl font-bold text-white mb-1">Booking Blocked</h2>
+          <p class="text-slate-400 text-sm mb-5">${msg}</p>
+          <p class="text-xs text-slate-500 mb-5">Drivers with 3 or more late incidents are blocked from making new bookings. Please contact support.</p>
+          <button class="btn-ghost w-full text-sm" onclick="closeModal()">Close</button>
+        </div>
+      `;
+    }
+
+    loadAllSlots();
+  </script>
+</body>
+</html>

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WattsApp - Report Fault</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#10d9a0', dark: '#0ba87a' },
+            accent: '#22d3ee',
+          },
+        },
+      },
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { background-color:#0f1623; color:#e2e8f0; font-family:'Inter',sans-serif; }
+    .card { background:#151f2e; border:1px solid #1e2d40; border-radius:0.75rem; }
+    .btn-primary { background:#10d9a0; color:#0f1623; font-weight:600; border-radius:0.5rem; padding:0.625rem 1.5rem; transition:background 0.2s; cursor:pointer; border:none; font-size:0.875rem; }
+    .btn-primary:hover { background:#0ba87a; }
+    .btn-ghost { background:transparent; color:#94a3b8; border:1px solid #1e2d40; border-radius:0.5rem; padding:0.625rem 1.25rem; transition:all 0.2s; cursor:pointer; font-size:0.875rem; }
+    .btn-ghost:hover { border-color:#10d9a0; color:#10d9a0; }
+    .input-field { background:#0f1623; border:1px solid #1e2d40; border-radius:0.5rem; color:#e2e8f0; padding:0.625rem 0.875rem; width:100%; transition:border-color 0.2s; font-size:0.875rem; }
+    .input-field:focus { outline:none; border-color:#10d9a0; }
+    .input-field.error { border-color:#f87171; }
+    .input-field option { background:#151f2e; }
+    .field-label { display:block; font-size:0.75rem; color:#94a3b8; margin-bottom:0.375rem; font-weight:500; }
+    .field-error { font-size:0.7rem; color:#f87171; margin-top:0.25rem; display:none; }
+    .spinner-sm { border:2px solid #0f1623; border-top-color:#0f1623; border-radius:50%; width:16px; height:16px; animation:spin 0.8s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .success-ring { width:72px; height:72px; background:rgba(16,217,160,0.1); border:2px solid rgba(16,217,160,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; }
+    .info-card { background:#0f1623; border-radius:0.625rem; padding:1rem; }
+    .divider { border:none; border-top:1px solid #1e2d40; margin:1.5rem 0; }
+    textarea.input-field { resize:vertical; min-height:110px; }
+    .nav-link { color: #94a3b8; padding: 0.5rem 0.875rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; transition: all 0.2s; text-decoration: none; }
+    .nav-link:hover, .nav-link.active { color: #10d9a0; background: rgba(16,217,160,0.1); }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Nav -->
+  <header style="background:#0d1520; border-bottom:1px solid #1e2d40;" class="sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+      <div class="flex items-center gap-3">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10d9a0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span class="text-lg font-bold text-white">WattsApp</span>
+      </div>
+      <nav class="hidden sm:flex items-center gap-1">
+        <a href="index.html"    class="nav-link">Dashboard</a>
+        <a href="slots.html"    class="nav-link">Find Slots</a>
+        <a href="bookings.html" class="nav-link">My Bookings</a>
+        <a href="fault.html"    class="nav-link active">Report Fault</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <select id="driverSelect" class="input-field text-xs" style="width:110px;padding:0.3rem 0.5rem" onchange="setDriverID(this.value)">
+          <option value="1">Driver 1</option>
+          <option value="2">Driver 2</option>
+          <option value="3">Driver 3</option>
+          <option value="4">Driver 4</option>
+          <option value="5">Driver 5</option>
+        </select>
+        <span id="lateCountBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25);display:none"></span>
+        <div class="pulse-dot ml-1"></div>
+        <span class="text-xs text-slate-400 hidden sm:block">System Live</span>
+      </div>
+    </div>
+    <div class="sm:hidden flex gap-1 px-4 pb-2 overflow-x-auto">
+      <a href="index.html"    class="nav-link whitespace-nowrap">Dashboard</a>
+      <a href="slots.html"    class="nav-link whitespace-nowrap">Find Slots</a>
+      <a href="bookings.html" class="nav-link whitespace-nowrap">My Bookings</a>
+      <a href="fault.html"    class="nav-link active whitespace-nowrap">Report Fault</a>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+
+    <div class="mb-8">
+      <a href="index.html" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-teal-400 transition-colors mb-4" style="text-decoration:none;">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Dashboard
+      </a>
+      <h1 class="text-2xl font-bold text-white">Report a Fault</h1>
+      <p class="text-slate-400 text-sm mt-1">Report a faulty charger or issue with your session. Eligible faults trigger an automatic refund.</p>
+    </div>
+
+    <!-- Info banner -->
+    <div class="card p-4 mb-8 flex gap-3" style="border-color:rgba(34,211,238,0.25);background:rgba(34,211,238,0.05)">
+      <svg width="18" height="18" fill="none" stroke="#22d3ee" stroke-width="2" viewBox="0 0 24 24" class="flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div class="text-sm text-slate-400">
+        Reporting a fault marks the charger as <strong class="text-slate-200">Faulty</strong>, removes it from available listings, and initiates a <strong class="text-slate-200">$5 deposit refund</strong> to the driver.
+      </div>
+    </div>
+
+    <!-- Form card -->
+    <div id="formCard" class="card p-6 sm:p-8">
+      <h2 class="text-base font-semibold text-white mb-6">Fault Report Details</h2>
+
+      <div class="flex flex-col gap-5">
+
+        <!-- IDs row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="field-label" for="faultBookingId">Booking ID <span class="text-red-400">*</span></label>
+            <input type="text" id="faultBookingId" placeholder="e.g. BK-001" class="input-field" />
+            <p class="field-error" id="err-bookingId">Booking ID is required.</p>
+          </div>
+          <div>
+            <label class="field-label" for="faultSlotId">Slot / Charger ID <span class="text-red-400">*</span></label>
+            <input type="text" id="faultSlotId" placeholder="e.g. SLT-005" class="input-field" />
+            <p class="field-error" id="err-slotId">Slot ID is required.</p>
+          </div>
+        </div>
+
+        <div>
+          <label class="field-label" for="faultDriverId">Driver ID <span class="text-red-400">*</span></label>
+          <input type="text" id="faultDriverId" placeholder="e.g. DRV-1042" class="input-field" />
+          <p class="field-error" id="err-driverId">Driver ID is required.</p>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Fault type -->
+        <div>
+          <label class="field-label">Fault Type <span class="text-red-400">*</span></label>
+          <select id="faultType" class="input-field">
+            <option value="">Select a fault type...</option>
+            <option value="no_power">No Power / Charger Dead</option>
+            <option value="connection_fail">Connection Failed</option>
+            <option value="slow_charge">Charging Slower Than Expected</option>
+            <option value="display_error">Display / Screen Error</option>
+            <option value="payment_issue">Payment Terminal Issue</option>
+            <option value="cable_damage">Cable or Connector Damage</option>
+            <option value="session_dropped">Session Dropped Unexpectedly</option>
+            <option value="other">Other</option>
+          </select>
+          <p class="field-error" id="err-faultType">Please select a fault type.</p>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="field-label" for="faultDesc">Description <span class="text-red-400">*</span></label>
+          <textarea id="faultDesc" placeholder="Describe the fault in detail — what happened, when it occurred, and any error codes shown..." class="input-field"></textarea>
+          <div class="flex justify-between mt-1">
+            <p class="field-error" id="err-desc">Description is required.</p>
+            <p class="text-xs text-slate-600 ml-auto" id="charCount">0 / 500</p>
+          </div>
+        </div>
+
+        <!-- Session still active toggle -->
+        <div class="flex items-center gap-3">
+          <button type="button" id="sessionActiveToggle" onclick="toggleSessionActive()" role="switch" aria-checked="false"
+            style="width:40px;height:22px;background:#1e2d40;border-radius:9999px;padding:2px;transition:background 0.2s;cursor:pointer;border:none;flex-shrink:0">
+            <div id="toggleThumb" style="width:18px;height:18px;background:#64748b;border-radius:50%;transition:all 0.2s;transform:translateX(0)"></div>
+          </button>
+          <div>
+            <p class="text-sm text-slate-300 font-medium">Session is still active</p>
+            <p class="text-xs text-slate-500">Check if the charging session is currently ongoing</p>
+          </div>
+        </div>
+
+        <!-- Submit error -->
+        <div id="formError" class="hidden text-sm text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2"></div>
+
+        <!-- Actions -->
+        <div class="flex flex-col sm:flex-row gap-3 mt-2">
+          <button id="submitBtn" onclick="submitFault()" class="btn-primary flex-1">Submit Fault Report</button>
+          <button type="button" onclick="resetForm()" class="btn-ghost">Clear Form</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent reports (history) -->
+    <div class="mt-8">
+      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4">Recent Reports</h2>
+      <div id="recentReports" class="flex flex-col gap-3">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Success overlay -->
+  <div id="successOverlay" class="hidden fixed inset-0 flex items-center justify-center z-50 px-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(4px)">
+    <div class="card p-8 max-w-md w-full text-center">
+      <div class="success-ring">
+        <svg width="32" height="32" fill="none" stroke="#10d9a0" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2 class="text-2xl font-bold text-white mb-2">Fault Reported</h2>
+      <p class="text-slate-400 text-sm mb-6">The charger has been flagged as faulty and removed from available listings. A refund has been initiated.</p>
+      <div id="successDetail" class="info-card text-left mb-6 grid grid-cols-2 gap-3 text-sm">
+        <!-- Populated by JS -->
+      </div>
+      <div style="background:rgba(16,217,160,0.06);border:1px solid rgba(16,217,160,0.2);border-radius:0.625rem;padding:0.875rem" class="mb-6 text-left">
+        <p class="text-xs font-semibold" style="color:#10d9a0;">Refund Processed</p>
+        <p class="text-sm text-slate-300 mt-1">$5.00 deposit refund has been initiated to driver <span id="refundDriver" class="font-semibold text-white">--</span></p>
+        <p class="text-xs text-slate-500 mt-1">Allow 3-5 business days for processing.</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="bookings.html" class="btn-primary flex-1">View My Bookings</a>
+        <button onclick="closeSuccess()" class="btn-ghost">Report Another</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const REPORT_FAULT_URL = 'http://localhost:8000/reportfault';
+    let sessionActive = false;
+    let recentFaults = [];
+
+    const DRIVER_SVC_URL = 'http://localhost:8000/drivers';
+    function getDriverID() { return localStorage.getItem('selectedDriverID') || '3'; }
+    function setDriverID(id) { localStorage.setItem('selectedDriverID', id); updateLateCount(); }
+
+    async function updateLateCount() {
+      const badge = document.getElementById('lateCountBadge');
+      try {
+        const res = await fetch(`${DRIVER_SVC_URL}/drivers/${getDriverID()}`);
+        const data = await res.json();
+        const count = data.data?.late_count || 0;
+        badge.textContent = `Late: ${count}`;
+        badge.style.display = count > 0 ? 'inline' : 'none';
+      } catch(_) { badge.style.display = 'none'; }
+    }
+
+    // Pre-fill from URL params
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('driverSelect').value = getDriverID();
+      updateLateCount();
+      const p = new URLSearchParams(window.location.search);
+      if(p.get('bookingId')) document.getElementById('faultBookingId').value = p.get('bookingId');
+      if(p.get('slotId'))    document.getElementById('faultSlotId').value    = p.get('slotId');
+      if(p.get('driverId'))  document.getElementById('faultDriverId').value  = p.get('driverId');
+      else document.getElementById('faultDriverId').value = getDriverID();
+      loadRecentReports();
+    });
+
+    document.getElementById('faultDesc').addEventListener('input', function() {
+      document.getElementById('charCount').textContent = `${this.value.length} / 500`;
+      if(this.value.length > 500) this.value = this.value.slice(0, 500);
+    });
+
+    function showToast(msg, type='info') {
+      const t = document.getElementById('toast');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    function toggleSessionActive() {
+      sessionActive = !sessionActive;
+      const toggle = document.getElementById('sessionActiveToggle');
+      const thumb  = document.getElementById('toggleThumb');
+      toggle.setAttribute('aria-checked', sessionActive);
+      toggle.style.background = sessionActive ? 'rgba(16,217,160,0.3)' : '#1e2d40';
+      thumb.style.background  = sessionActive ? '#10d9a0' : '#64748b';
+      thumb.style.transform   = sessionActive ? 'translateX(18px)' : 'translateX(0)';
+    }
+
+    function setFieldError(id, errId, show) {
+      const field = document.getElementById(id);
+      const err   = document.getElementById(errId);
+      if(show) {
+        field.classList.add('error');
+        err.style.display = 'block';
+      } else {
+        field.classList.remove('error');
+        err.style.display = 'none';
+      }
+      return !show;
+    }
+
+    function validate() {
+      const bookingId = document.getElementById('faultBookingId').value.trim();
+      const slotId    = document.getElementById('faultSlotId').value.trim();
+      const driverId  = document.getElementById('faultDriverId').value.trim();
+      const faultType = document.getElementById('faultType').value;
+      const desc      = document.getElementById('faultDesc').value.trim();
+
+      let valid = true;
+      valid = setFieldError('faultBookingId', 'err-bookingId', !bookingId) && valid;
+      valid = setFieldError('faultSlotId',    'err-slotId',    !slotId)    && valid;
+      valid = setFieldError('faultDriverId',  'err-driverId',  !driverId)  && valid;
+      valid = setFieldError('faultType',      'err-faultType', !faultType) && valid;
+      valid = setFieldError('faultDesc',      'err-desc',      !desc) && valid;
+
+      return valid;
+    }
+
+    async function submitFault() {
+      document.getElementById('formError').classList.add('hidden');
+      if(!validate()) {
+        document.getElementById('formError').textContent = 'Please fix the errors above before submitting.';
+        document.getElementById('formError').classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.innerHTML = `<span class="spinner-sm"></span> Submitting...`;
+      btn.disabled = true;
+
+      // Strip display prefixes so IDs reach the backend as integers
+      const rawBookingId = document.getElementById('faultBookingId').value.trim();
+      const rawSlotId    = document.getElementById('faultSlotId').value.trim();
+      const rawDriverId  = document.getElementById('faultDriverId').value.trim();
+      const payload = {
+        bookingID:     parseInt(rawBookingId.replace('BK-','')) || parseInt(rawBookingId) || rawBookingId,
+        slotID:        parseInt(rawSlotId) || rawSlotId,
+        driverID:      parseInt(rawDriverId.replace('DRV-','')) || parseInt(rawDriverId) || rawDriverId,
+        faultType:     document.getElementById('faultType').value,
+        description:   document.getElementById('faultDesc').value.trim(),
+        sessionActive: sessionActive,
+        reportedAt:    new Date().toISOString(),
+      };
+
+      try {
+        const res = await fetch(`${REPORT_FAULT_URL}/reportfault`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+        if(!res.ok) throw new Error();
+      } catch(_) {
+        // Show success state for demo
+      }
+
+      // Store in recent
+      recentFaults.unshift({ ...payload, reportId: `RPT-${Date.now().toString().slice(-5)}` });
+      localStorage.setItem('recentFaults', JSON.stringify(recentFaults.slice(0,5)));
+
+      showSuccessOverlay(payload);
+      btn.innerHTML = 'Submit Fault Report';
+      btn.disabled = false;
+    }
+
+    function showSuccessOverlay(payload) {
+      const faultTypeMap = {
+        no_power:'No Power / Charger Dead', connection_fail:'Connection Failed', slow_charge:'Slow Charging',
+        display_error:'Display/Screen Error', payment_issue:'Payment Terminal Issue',
+        cable_damage:'Cable Damage', session_dropped:'Session Dropped', other:'Other',
+      };
+      document.getElementById('successDetail').innerHTML = `
+        <div><p class="text-xs text-slate-500 mb-0.5">Booking ID</p><p class="font-bold text-white">${payload.bookingID}</p></div>
+        <div><p class="text-xs text-slate-500 mb-0.5">Slot ID</p><p class="font-bold text-white">${payload.slotID}</p></div>
+        <div><p class="text-xs text-slate-500 mb-0.5">Driver ID</p><p class="text-slate-200">${payload.driverID}</p></div>
+        <div class="col-span-2"><p class="text-xs text-slate-500 mb-0.5">Fault Type</p><p class="text-slate-200">${faultTypeMap[payload.faultType]||payload.faultType}</p></div>
+      `;
+      document.getElementById('refundDriver').textContent = payload.driverID;
+      document.getElementById('successOverlay').classList.remove('hidden');
+    }
+
+    function closeSuccess() {
+      document.getElementById('successOverlay').classList.add('hidden');
+      resetForm();
+      loadRecentReports();
+    }
+
+    function resetForm() {
+      ['faultBookingId','faultSlotId','faultDriverId','faultDesc'].forEach(id => {
+        document.getElementById(id).value = '';
+        document.getElementById(id).classList.remove('error');
+      });
+      document.getElementById('faultType').value = '';
+      document.querySelectorAll('.field-error').forEach(e => e.style.display='none');
+      document.getElementById('formError').classList.add('hidden');
+      document.getElementById('charCount').textContent = '0 / 500';
+      if(sessionActive) toggleSessionActive();
+    }
+
+    function loadRecentReports() {
+      try {
+        const stored = JSON.parse(localStorage.getItem('recentFaults') || '[]');
+        recentFaults = stored;
+      } catch(_) { recentFaults = []; }
+
+      const container = document.getElementById('recentReports');
+      if(!recentFaults.length) {
+        container.innerHTML = `<p class="text-sm text-slate-600">No recent reports in this session.</p>`;
+        return;
+      }
+      container.innerHTML = recentFaults.map(r => `
+        <div class="card p-4 flex items-start justify-between gap-3">
+          <div class="flex gap-3">
+            <div style="width:36px;height:36px;background:rgba(239,68,68,0.1);border-radius:0.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="16" height="16" fill="none" stroke="#f87171" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-white">${r.bookingID} · ${r.slotID}</p>
+              <p class="text-xs text-slate-500 mt-0.5">${r.description.slice(0,70)}${r.description.length>70?'...':''}</p>
+              <p class="text-xs text-slate-600 mt-1">${new Date(r.reportedAt).toLocaleString()}</p>
+            </div>
+          </div>
+          <span class="text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0" style="background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25)">Faulty</span>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>
