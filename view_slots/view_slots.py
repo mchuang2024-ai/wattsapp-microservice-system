@@ -36,6 +36,11 @@ def view_slots():
         if driver_response.status_code != 200:
             return jsonify({'error': 'Driver not found'}), 404
         
+        driver_data = driver_response.json().get('data', {})
+        late_count = driver_data.get('late_count', 0)
+        if late_count >= 5:
+            return jsonify({'error': 'Driver is blocked due to too many late arrivals'}), 403
+        
         if outsystems_response.status_code != 200:
             return jsonify({'error': 'Failed to fetch available slots from OutSystems'}), 500
         

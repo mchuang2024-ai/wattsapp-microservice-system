@@ -65,6 +65,7 @@ services:
         strip_path: false
 
   - name: make-booking-service
+    # Flask app handles /create-booking — this is the correct path to route to
     url: http://make-booking:5011
     routes:
       - name: make-booking-route
@@ -73,6 +74,7 @@ services:
         strip_path: false
 
   - name: handle-noshow-service
+    # container name is "handle-No-Show" — Docker internal DNS is case-sensitive
     url: http://handle-No-Show:5100
     routes:
       - name: handle-noshow-route
@@ -82,3 +84,8 @@ services:
 
 plugins:
   - name: prometheus
+    config:
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+      upstream_health_metrics: true

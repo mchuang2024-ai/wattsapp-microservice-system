@@ -160,7 +160,7 @@ def report_fault():
         # Cancel booking
         print(f"[5] Attempting to cancel booking {bookingID}...")
         try:
-            resp = requests.delete(f"{BOOKING_URL}/booking/{bookingID}", timeout=2)
+            resp = requests.put(f"{BOOKING_URL}/booking/{bookingID}/cancel", timeout=2)
             results.append({"step": "cancel_booking", "status": resp.status_code})
             print(f"    ✓ Booking cancelled: {resp.status_code}")
                         # Publish booking.cancelled event
